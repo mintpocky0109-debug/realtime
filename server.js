@@ -1,3 +1,5 @@
+// server.js 맨 윗줄에 추가
+process.env.TZ = 'Asia/Seoul';
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
