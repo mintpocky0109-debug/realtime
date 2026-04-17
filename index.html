@@ -16,8 +16,9 @@
         <nav class="sidebar">
             <div id="boardList"></div>
             <div id="sideMenu" style="margin-top:20px; border-top:1px solid #eee; display:none; padding-top:20px;">
-                <button class="btn btn-green" style="width:100%; margin-top:15px;" onclick="location.href='/write'">📝 글쓰기</button>
-                <button class="btn" style="width:100%; margin-top:8px; background:#f9f9f9; color:#666; border:1px solid #ddd;" onclick="openSettings()">⚙️ 카페 설정</button>
+                <button class="btn btn-green" style="width:100%;" onclick="location.href='/write'">📝 글쓰기</button>
+                <button class="btn" id="adminBtn" style="width:100%; margin-top:8px; display:none;" onclick="openSettings()">⚙️ 카페 설정</button>
+                <button class="btn" id="memberBtn" style="width:100%; margin-top:8px;" onclick="openSettings()">👤 정보 수정</button>
             </div>
         </nav>
         
@@ -26,53 +27,47 @@
                 <h2 id="currentBoardTitle" style="padding:25px 25px 0 25px; margin:0;">전체보기</h2>
                 <div id="postList"></div>
             </div>
-            
             <div id="postDetailView" style="display:none; padding:30px;">
-                <div onclick="closePost()" style="cursor:pointer; color:#888; margin-bottom:20px; font-size:14px;">← 목록으로 돌아가기</div>
+                <div onclick="closePost()" style="cursor:pointer; color:#888; margin-bottom:20px;">← 목록으로</div>
                 <div id="postDetailBody"></div>
-                <div id="likeArea" style="margin:25px 0; text-align:center;"></div>
             </div>
         </section>
     </div>
 
-    <div id="profileModal" class="modal" onclick="this.style.display='none'">
-        <div style="background:white; width:360px; border-radius:20px; overflow:hidden;" onclick="event.stopPropagation()">
-            <div id="p-bg" style="height:120px; background:#ddd center/cover;"></div>
-            <div style="padding:20px; position:relative; text-align:center;">
-                <img id="p-img" style="width:80px; height:80px; border-radius:50%; border:4px solid white; margin-top:-60px; background:white; object-fit:cover;">
-                <h3 id="p-nick" style="margin:10px 0 5px 0; font-size:20px;"></h3>
-                <p id="p-desc" style="color:#666; font-size:14px; line-height:1.5; min-height:1.2em;"></p>
-                <button class="btn" style="width:100%; margin-top:15px; background:#eee;" onclick="document.getElementById('profileModal').style.display='none'">닫기</button>
-            </div>
+    <div id="settingsModal" class="modal">
+        <div style="background:white; width:400px; border-radius:20px; padding:25px;">
+            <h3 id="setModalTitle">내 정보 수정</h3>
+            <div id="bgP" style="width:100%; height:100px; background:#eee center/cover; border-radius:10px; cursor:pointer;" onclick="document.getElementById('bgF').click()"></div>
+            <img id="pfP" style="width:60px; height:60px; border-radius:50%; border:3px solid white; margin-top:-30px; margin-left:15px; cursor:pointer;" onclick="document.getElementById('pfF').click()">
+            <input type="file" id="bgF" style="display:none;" onchange="pvImg(this, 'bgP')">
+            <input type="file" id="pfF" style="display:none;" onchange="pvImg(this, 'pfP')">
+            <input type="text" id="setNick" placeholder="닉네임" class="input-style" style="margin-top:15px;">
+            <textarea id="setDesc" placeholder="자기소개" class="input-style" style="height:70px;"></textarea>
+            <button class="btn btn-green" style="width:100%; padding:12px;" onclick="saveProfile()">저장하기</button>
+            <button class="btn" style="width:100%; margin-top:8px; background:#eee;" onclick="document.getElementById('settingsModal').style.display='none'">닫기</button>
         </div>
     </div>
 
-    <div id="settingsModal" class="modal">
-        <div style="background:white; width:420px; border-radius:20px; padding:25px;">
-            <h3 style="margin-top:0;">내 정보 수정</h3>
-            <div id="st-0" class="st-content" style="display:block;">
-                <div id="bgP" style="width:100%; height:110px; border-radius:10px; background:#eee center/cover; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#888; font-size:12px;" onclick="document.getElementById('bgF').click()">배너 이미지 선택</div>
-                <img id="pfP" style="width:70px; height:70px; border-radius:50%; border:3px solid white; margin-top:-35px; margin-left:15px; background:#fff; cursor:pointer; object-fit:cover;" onclick="document.getElementById('pfF').click()">
-                <input type="file" id="bgF" style="display:none;" onchange="pvImg(this, 'bgP')">
-                <input type="file" id="pfF" style="display:none;" onchange="pvImg(this, 'pfP')">
-                
-                <input type="text" id="setNick" placeholder="닉네임" class="input-style" style="margin-top:15px;">
-                <textarea id="setDesc" placeholder="나를 소개해주세요" class="input-style" style="height:80px; resize:none;"></textarea>
-                <button class="btn btn-green" style="width:100%; padding:15px;" onclick="saveProfile()">설정 저장하기</button>
+    <div id="profileModal" class="modal" onclick="this.style.display='none'">
+        <div style="background:white; width:340px; border-radius:20px; overflow:hidden;" onclick="event.stopPropagation()">
+            <div id="p-bg" style="height:100px; background:#ddd center/cover;"></div>
+            <div style="padding:20px; text-align:center;">
+                <img id="p-img" style="width:80px; height:80px; border-radius:50%; border:4px solid white; margin-top:-50px; background:white;">
+                <h3 id="p-nick" style="margin:10px 0;"></h3>
+                <p id="p-desc" style="color:#666; font-size:14px;"></p>
             </div>
-            <button class="btn" style="width:100%; margin-top:15px; background:#f5f5f5;" onclick="document.getElementById('settingsModal').style.display='none'">취소</button>
         </div>
     </div>
 
     <div id="loginModal" class="modal">
         <div style="background:white; width:320px; border-radius:20px; padding:30px;">
-            <div style="display:flex; margin-bottom:20px;">
-                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; cursor:pointer; padding-bottom:10px;" onclick="switchLTab('L')">로그인</div>
-                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; cursor:pointer; padding-bottom:10px;" onclick="switchLTab('S')">회원가입</div>
+            <div style="display:flex; margin-bottom:20px; border-bottom:1px solid #eee;">
+                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; padding-bottom:10px; cursor:pointer;" onclick="switchLTab('L')">로그인</div>
+                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; padding-bottom:10px; cursor:pointer;" onclick="switchLTab('S')">회원가입</div>
             </div>
             <input type="text" id="uId" placeholder="아이디" class="input-style">
             <input type="password" id="uPw" placeholder="비밀번호" class="input-style">
-            <input type="text" id="uNi" placeholder="닉네임 (가입 시)" class="input-style" style="display:none;">
+            <input type="text" id="uNi" placeholder="닉네임" class="input-style" style="display:none;">
             <button id="authBtn" class="btn btn-green" style="width:100%; padding:12px;" onclick="auth()">로그인</button>
             <button class="btn" style="width:100%; margin-top:8px; background:#eee;" onclick="document.getElementById('loginModal').style.display='none'">닫기</button>
         </div>
@@ -95,9 +90,6 @@
             renderAll(); 
         });
 
-        socket.on('update_posts', p => { allPosts = p; renderPosts(); });
-        socket.on('update_users', u => { allUsers = u; });
-
         function renderAll() {
             document.getElementById('cafeName').innerText = cafeConfig.cafeName;
             document.getElementById('boardList').innerHTML = `<div class="board-item active" onclick="filterBoard('전체보기', this)">📋 전체보기</div>` + 
@@ -109,106 +101,19 @@
         function updateAuthUI() {
             const h = document.getElementById('headerAuth');
             if(currentUser) {
-                h.innerHTML = `
-                    <b onclick="showProfile('${currentUser.nickname.trim()}')" style="cursor:pointer; margin-right:12px; font-size:15px; text-decoration:underline;">
-                        ${currentUser.nickname}님
-                    </b> 
-                    <button class="btn" onclick="logout()" style="padding:5px 10px; font-size:12px; background:#eee;">로그아웃</button>
-                `;
+                h.innerHTML = `<b onclick="showProfile('${currentUser.nickname}')" style="cursor:pointer; margin-right:10px;">${currentUser.nickname}님</b><button class="btn" onclick="logout()" style="padding:4px 8px; font-size:12px;">로그아웃</button>`;
                 document.getElementById('sideMenu').style.display = 'block';
+                // 주인장 권한에 따른 버튼 노출
+                if(currentUser.role === '주인장') {
+                    document.getElementById('adminBtn').style.display = 'block';
+                    document.getElementById('memberBtn').style.display = 'none';
+                } else {
+                    document.getElementById('adminBtn').style.display = 'none';
+                    document.getElementById('memberBtn').style.display = 'block';
+                }
             } else {
                 h.innerHTML = `<button class="btn btn-green" onclick="document.getElementById('loginModal').style.display='flex'">로그인</button>`;
                 document.getElementById('sideMenu').style.display = 'none';
-            }
-        }
-
-        function renderPosts() {
-            const t = document.getElementById('currentBoardTitle').innerText;
-            let f = t === "전체보기" ? allPosts : allPosts.filter(p=>p.board===t);
-            f.sort((a, b) => (b.board === "공지사항") - (a.board === "공지사항") || b.id - a.id);
-
-            document.getElementById('postList').innerHTML = f.map(p=>`
-                <div class="post-list-item ${p.board==='공지사항'?'notice-pinned':''}" onclick="openPost(${p.id})">
-                    <div style="flex:1;">
-                        <div style="font-weight:bold; font-size:16px; margin-bottom:5px;">
-                            ${p.board==='공지사항'?'<span class="notice-badge" style="background:#ff4d4d; color:white; padding:2px 6px; border-radius:4px; font-size:12px; margin-right:5px;">공지</span>':''}
-                            ${p.content.substring(0,40)}
-                        </div>
-                        <small style="color:#2db400; font-weight:bold; cursor:pointer;" onclick="showProfile('${p.nickname}'); event.stopPropagation();">${p.nickname}</small>
-                        <small style="color:#aaa;"> · ☕ ${p.likedBy ? p.likedBy.length : 0}</small>
-                    </div>
-                    ${p.image ? `<img src="${p.image}" style="width:60px; height:60px; border-radius:8px; object-fit:cover; margin-left:15px;">` : ''}
-                </div>
-            `).join('') || '<div style="padding:50px; text-align:center; color:#ccc;">글이 없습니다.</div>';
-        }
-
-        function openPost(id) {
-            const p = allPosts.find(x=>x.id===id); if(!p) return;
-            document.getElementById('listView').style.display='none';
-            document.getElementById('postDetailView').style.display='block';
-            const isLiked = currentUser && p.likedBy && p.likedBy.includes(currentUser.userId);
-            document.getElementById('postDetailBody').innerHTML = `
-                <div style="display:flex; align-items:center; margin-bottom:20px;">
-                    <img src="${p.profileImg || DEFAULT_PF}" style="width:45px; height:45px; border-radius:50%; margin-right:12px; object-fit:cover; background:#eee;">
-                    <div><b style="font-size:16px; cursor:pointer;" onclick="showProfile('${p.nickname}')">${p.nickname}</b><br><small style="color:#999;">${p.time} · ${p.board}</small></div>
-                </div>
-                <div style="font-size:17px; line-height:1.8; white-space:pre-wrap;">${p.content}</div>
-                ${p.image?`<img src="${p.image}" style="max-width:100%; margin-top:25px; border-radius:12px; border:1px solid #eee;">`:''}
-            `;
-            document.getElementById('likeArea').innerHTML = `<button class="btn" style="background:${isLiked?'#fff0f0':'#f9f9f9'}; border:1px solid ${isLiked?'#ff4d4d':'#ddd'}" onclick="toggleLike(${p.id})">☕ 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
-        }
-
-        function showProfile(nick) {
-            let u = allUsers.find(x => x.nickname.trim() === nick.trim());
-            if(!u && currentUser && currentUser.nickname.trim() === nick.trim()) u = currentUser;
-            if(!u) return alert("유저 정보를 찾을 수 없습니다.");
-            
-            document.getElementById('p-bg').style.backgroundImage = u.bgImg ? `url(${u.bgImg})` : 'none';
-            document.getElementById('p-img').src = u.profileImg || DEFAULT_PF;
-            document.getElementById('p-nick').innerText = u.nickname;
-            document.getElementById('p-desc').innerText = u.profileDesc || "안녕하세요! 반갑습니다.";
-            document.getElementById('profileModal').style.display = 'flex';
-        }
-
-        function openSettings() {
-            if(!currentUser) return;
-            document.getElementById('setNick').value = currentUser.nickname;
-            document.getElementById('setDesc').value = currentUser.profileDesc || "";
-            document.getElementById('bgP').style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
-            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
-        async function saveProfile() {
-            if(!currentUser) return;
-            if(!confirm("설정을 저장하시겠습니까?")) return;
-            const bgDiv = document.getElementById('bgP').style.backgroundImage;
-            const bgUrl = (bgDiv && bgDiv !== 'none') ? bgDiv.slice(5, -2).replace(/"/g, "") : "";
-            const payload = {
-                userId: currentUser.userId,
-                nickname: document.getElementById('setNick').value.trim(),
-                profileDesc: document.getElementById('setDesc').value,
-                profileImg: document.getElementById('pfP').src,
-                bgImg: bgUrl
-            };
-            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-            const data = await res.json();
-            if(data.success) {
-                localStorage.setItem('cafeUser', JSON.stringify(data.user));
-                alert("성공적으로 저장되었습니다!");
-                location.reload(); 
-            } else alert(data.message);
-        }
-
-        function pvImg(input, targetId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    if (targetId === 'bgP') { document.getElementById(targetId).style.backgroundImage = `url(${e.target.result})`; document.getElementById(targetId).innerText = ''; }
-                    else document.getElementById(targetId).src = e.target.result;
-                };
-                reader.readAsDataURL(file);
             }
         }
 
@@ -217,24 +122,96 @@
             document.getElementById('lTabL').classList.toggle('active', m==='L');
             document.getElementById('lTabS').classList.toggle('active', m==='S');
             document.getElementById('uNi').style.display = m === 'S' ? 'block' : 'none';
+            document.getElementById('authBtn').innerText = m === 'L' ? '로그인' : '회원가입'; // 버튼 문구 변경
         }
 
         async function auth() {
             const userId = document.getElementById('uId').value.trim();
             const password = document.getElementById('uPw').value.trim();
             const nickname = document.getElementById('uNi').value.trim();
-            const res = await fetch(authMode === 'L' ? '/api/login' : '/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, password, nickname }) });
+            
+            const endpoint = authMode === 'L' ? '/api/login' : '/api/signup';
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, password, nickname })
+            });
             const d = await res.json();
+            
             if(d.success) {
-                if(authMode === 'L') { localStorage.setItem('cafeUser', JSON.stringify(d.user)); location.reload(); }
-                else { alert("가입되었습니다!"); switchLTab('L'); }
+                if(authMode === 'L') {
+                    localStorage.setItem('cafeUser', JSON.stringify(d.user));
+                    location.reload();
+                } else {
+                    alert("회원가입이 완료되었습니다! 로그인해주세요.");
+                    switchLTab('L');
+                }
             } else alert(d.message);
         }
 
-        function closePost() { document.getElementById('listView').style.display='block'; document.getElementById('postDetailView').style.display='none'; }
+        async function saveProfile() {
+            if(!confirm("정보를 수정하시겠습니까?")) return;
+            const bgDiv = document.getElementById('bgP').style.backgroundImage;
+            const payload = {
+                userId: currentUser.userId,
+                nickname: document.getElementById('setNick').value.trim(),
+                profileDesc: document.getElementById('setDesc').value,
+                profileImg: document.getElementById('pfP').src,
+                bgImg: bgDiv && bgDiv !== 'none' ? bgDiv.slice(5, -2).replace(/"/g, "") : ""
+            };
+            const res = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await res.json();
+            if(d.success) {
+                localStorage.setItem('cafeUser', JSON.stringify(d.user));
+                alert("저장되었습니다.");
+                location.reload();
+            } else alert(d.message);
+        }
+
+        function openSettings() {
+            document.getElementById('setNick').value = currentUser.nickname;
+            document.getElementById('setDesc').value = currentUser.profileDesc || "";
+            document.getElementById('bgP').style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
+            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function showProfile(nick) {
+            let u = allUsers.find(x => x.nickname === nick);
+            if(!u) return alert("유저 정보를 찾을 수 없습니다.");
+            document.getElementById('p-bg').style.backgroundImage = u.bgImg ? `url(${u.bgImg})` : 'none';
+            document.getElementById('p-img').src = u.profileImg || DEFAULT_PF;
+            document.getElementById('p-nick').innerText = u.nickname + " (" + u.role + ")";
+            document.getElementById('p-desc').innerText = u.profileDesc || "";
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        function renderPosts() {
+            document.getElementById('postList').innerHTML = allPosts.map(p => `
+                <div class="post-list-item" onclick="openPost(${p.id})">
+                    <div style="font-weight:bold;">${p.content.substring(0,30)}</div>
+                    <small style="color:#2db400;">${p.nickname}</small>
+                </div>
+            `).join('') || '<p style="text-align:center; padding:20px; color:#ccc;">글이 없습니다.</p>';
+        }
+
         function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
-        function toggleLike(postId) { if(!currentUser) return alert("로그인하세요."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
-        function filterBoard(n, e) { document.querySelectorAll('.board-item').forEach(i=>i.classList.remove('active')); e.classList.add('active'); document.getElementById('currentBoardTitle').innerText=n; closePost(); renderPosts(); }
+        function pvImg(input, targetId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    if (targetId === 'bgP') document.getElementById(targetId).style.backgroundImage = `url(${e.target.result})`;
+                    else document.getElementById(targetId).src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        function closePost() { document.getElementById('listView').style.display='block'; document.getElementById('postDetailView').style.display='none'; }
     </script>
 </body>
 </html>
