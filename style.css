@@ -8,10 +8,11 @@
     --naver-green: #2db400;
     --admin-gold: #ffcc00;
     --staff-cyan: #00ffcc;
-    --max-width: 900px; /* 전체적인 너비를 시원하게 확장 */
+    --notice-red: #ff4747;
+    --max-width: 900px;
 }
 
-* { box-sizing: border-box; } /* 모든 요소의 너비 계산 방식 통일 (매우 중요) */
+* { box-sizing: border-box; }
 
 body {
     margin: 0; padding: 0;
@@ -22,66 +23,67 @@ body {
     min-height: 100vh;
 }
 
-/* 설정 아이콘 */
+/* 상단 공지 섹션 (개성 있는 디자인) */
+.notice-container {
+    width: 100%; max-width: var(--max-width);
+    margin: 20px 0; padding: 0 20px;
+}
+.notice-item {
+    background: linear-gradient(90deg, rgba(255, 71, 71, 0.1), rgba(88, 101, 242, 0.1));
+    border: 1px solid var(--notice-red);
+    border-radius: 12px; padding: 15px 20px;
+    display: flex; align-items: center; gap: 15px;
+    box-shadow: 0 4px 15px rgba(255, 71, 71, 0.1);
+}
+.notice-badge {
+    background: var(--notice-red); color: white;
+    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
+}
+
+/* 설정 아이콘 (관리자/점원만 보이도록 JS 처리 예정) */
 .settings-icon {
     position: fixed; top: 20px; right: 20px;
     font-size: 24px; cursor: pointer; z-index: 100;
-    background: rgba(0,0,0,0.3); padding: 8px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%;
+    display: none; /* 기본 숨김 */
 }
 
-/* 모달 */
 .modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000;
+    background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000;
 }
 .modal-content {
-    background: var(--bg-card); padding: 30px; border-radius: 12px;
-    width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 15px;
+    background: var(--bg-card); padding: 40px; border-radius: 20px;
+    width: 90%; max-width: 450px; display: flex; flex-direction: column; gap: 20px;
 }
 
-/* 상단 영역 */
-.cafe-header { width: 100%; max-width: var(--max-width); padding: 50px 20px 20px; text-align: left; }
-.cafe-header h1 { margin: 0; font-size: 32px; cursor: pointer; letter-spacing: -1px; }
+.cafe-header { width: 100%; max-width: var(--max-width); padding: 50px 20px 10px; }
+.cafe-header h1 { margin: 0; font-size: 36px; color: var(--text-white); }
 
-.notice-banner {
-    width: 90%; max-width: var(--max-width);
-    background: rgba(88, 101, 242, 0.1); border: 1px solid var(--accent-blue);
-    padding: 15px 20px; border-radius: 8px; margin-bottom: 25px; font-size: 14px;
-}
-
-/* 컨트롤 바 */
 .control-bar { width: 100%; max-width: var(--max-width); display: flex; justify-content: flex-end; padding: 0 20px; margin-bottom: 20px; }
-.btn-write { background-color: var(--naver-green); color: white; border: none; padding: 12px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+.btn-write { background-color: var(--naver-green); color: white; border: none; padding: 14px 35px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-/* 게시판 목록 */
-#board { width: 100%; max-width: var(--max-width); display: flex; flex-direction: column; gap: 15px; padding: 0 20px 60px; }
-.post { background-color: var(--bg-card); padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+#board { width: 100%; max-width: var(--max-width); display: flex; flex-direction: column; gap: 20px; padding: 0 20px 80px; }
+
+/* 일반 게시글 vs 공지 게시글 */
+.post { background-color: var(--bg-card); padding: 30px; border-radius: 15px; border-bottom: 1px solid #444; }
+.post.notice-post { border: 2px solid var(--notice-red); background-color: rgba(255, 71, 71, 0.05); }
+
 .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-
 .badge-admin { background: var(--admin-gold); color: #000; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
 .badge-staff { background: var(--staff-cyan); color: #000; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
 
 .post-nickname { font-weight: bold; font-size: 18px; }
-.post-content { font-size: 16px; line-height: 1.8; color: #eef1f4; white-space: pre-wrap; }
-.post-image { width: 100%; border-radius: 8px; margin-top: 20px; border: 1px solid #444; }
+.post-content { font-size: 17px; line-height: 1.8; color: #ddd; white-space: pre-wrap; }
+.post-image { width: 100%; border-radius: 10px; margin-top: 20px; }
 
-/* 글쓰기 화면 전용 (WRITE.HTML 비율 조정) */
+/* 작성 페이지 */
 .write-container { width: 100%; max-width: var(--max-width); padding: 40px 20px; }
-.write-box { background: var(--bg-card); padding: 40px; border-radius: 15px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.write-box { background: var(--bg-card); padding: 40px; border-radius: 20px; display: flex; flex-direction: column; gap: 25px; }
+.input-field { width: 100%; background: var(--bg-input); border: 1px solid #444; border-radius: 8px; color: white; padding: 18px; font-size: 16px; outline: none; }
+textarea.input-field { height: 550px; }
 
-.input-field { 
-    width: 100%; background: var(--bg-input); border: 1px solid #444; 
-    border-radius: 6px; color: white; padding: 15px; font-size: 16px; outline: none;
-}
-textarea.input-field { height: 500px; resize: vertical; } /* 높이를 500px로 대폭 확장 */
+/* 공지 체크박스 영역 */
+.notice-check-area { display: none; align-items: center; gap: 10px; color: var(--notice-red); font-weight: bold; }
 
-.file-label { display: inline-block; padding: 12px 20px; background: #4f545c; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-.file-label:hover { background: #686d73; }
-
-footer { padding: 50px; color: var(--text-gray); font-size: 13px; text-align: center; }
-
-@media (max-width: 600px) {
-    .cafe-header h1 { font-size: 24px; }
-    .write-box { padding: 20px; }
-    textarea.input-field { height: 350px; }
-}
+footer { padding: 60px; color: var(--text-gray); font-size: 13px; text-align: center; }

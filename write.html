@@ -9,22 +9,26 @@
 <body>
     <div class="write-container">
         <div class="write-box">
-            <h2 style="margin:0 0 10px 0;">📝 게시글 작성</h2>
-            <p style="font-size:14px; color:var(--text-gray); margin-bottom:20px;">자유롭게 여러분의 소식을 공유해 보세요.</p>
+            <h2 style="margin:0;">📝 카페 글쓰기</h2>
             
-            <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요 (주인장 인증은 이름#master123)">
+            <input id="nickname" class="input-field" type="text" placeholder="닉네임 (주인장 인증: 이름#master123)">
             
-            <div style="margin: 10px 0;">
-                <label class="file-label" for="imageInput">📷 사진 업로드</label>
+            <div id="noticeArea" class="notice-check-area">
+                <input type="checkbox" id="isNotice" style="width:20px; height:20px; cursor:pointer;">
+                <label for="isNotice" style="cursor:pointer;">이 글을 공지사항으로 등록</label>
+            </div>
+
+            <div style="margin: 5px 0;">
+                <label class="file-label" for="imageInput">📷 이미지 추가</label>
                 <input type="file" id="imageInput" accept="image/*" style="display:none;">
                 <div id="preview" style="margin-top:15px;"></div>
             </div>
 
-            <textarea id="content" class="input-field" placeholder="내용을 마음껏 적어보세요... (Ctrl + Enter로 바로 등록)"></textarea>
+            <textarea id="content" class="input-field" placeholder="내용을 입력하세요..."></textarea>
             
-            <div style="display:flex; gap:12px; justify-content: flex-end; margin-top:10px;">
-                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:6px; cursor:pointer; background:#4f545c; color:white; border:none; font-weight:bold;">취소</button>
-                <button onclick="send()" style="padding:15px 50px; border-radius:6px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold; font-size:16px;">등록하기</button>
+            <div style="display:flex; gap:12px; justify-content: flex-end;">
+                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:8px; cursor:pointer; background:#4f545c; color:white; border:none; font-weight:bold;">취소</button>
+                <button onclick="send()" style="padding:15px 50px; border-radius:8px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold; font-size:16px;">등록하기</button>
             </div>
         </div>
     </div>
@@ -35,14 +39,17 @@
         let b64 = "";
 
         window.onload = () => {
-            const savedNick = localStorage.getItem('userNickname');
-            if (savedNick) document.getElementById('nickname').value = savedNick;
+            const savedNick = localStorage.getItem('userNickname') || "";
+            document.getElementById('nickname').value = savedNick;
+            
+            // 역할 확인 (주인장/점원 체크)
+            socket.on('update_role_list', roles => {
+                const myRole = roles[savedNick.split('#')[0]];
+                if(myRole === '주인장' || myRole === '점원') {
+                    document.getElementById('noticeArea').style.display = 'flex';
+                }
+            });
         };
-
-        // 단축키 전송 기능
-        document.getElementById('content').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); send(); }
-        });
 
         document.getElementById('imageInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -50,7 +57,7 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     b64 = ev.target.result;
-                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid #444;">`;
+                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100%; border-radius:8px; border:1px solid #444;">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -59,11 +66,13 @@
         function send() {
             const nick = document.getElementById('nickname').value || '익명';
             const msg = document.getElementById('content').value;
-            if(!msg && !b64) return alert("내용을 작성해주세요!");
+            const isNotice = document.getElementById('isNotice').checked;
 
-            if (confirm("이 게시글을 등록하시겠습니까?")) {
+            if(!msg && !b64) return alert("내용을 입력하세요.");
+
+            if (confirm(isNotice ? "중요 공지사항으로 등록하시겠습니까?" : "글을 등록하시겠습니까?")) {
                 localStorage.setItem('userNickname', nick);
-                socket.emit('new_post', { nickname: nick, content: msg, image: b64 });
+                socket.emit('new_post', { nickname: nick, content: msg, image: b64, isNotice: isNotice });
                 location.href = '/';
             }
         }

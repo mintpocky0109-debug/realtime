@@ -7,14 +7,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="settings-icon" onclick="toggleSettings()">⚙️</div>
+    <div id="adminIcon" class="settings-icon" onclick="toggleSettings()">⚙️</div>
 
     <div class="cafe-header">
         <h1 onclick="location.href='/'">🚀 우리들의 비밀 커뮤니티</h1>
     </div>
 
-    <div class="notice-banner">
-        <strong>📢 공지:</strong> 즐거운 커뮤니티를 위해 서로를 배려해 주세요.
+    <div class="notice-container" id="noticeBar" style="display:none;">
+        <div class="notice-item">
+            <span class="notice-badge">필독</span>
+            <span id="latestNotice">최신 공지사항이 여기에 표시됩니다.</span>
+        </div>
     </div>
 
     <div class="control-bar">
@@ -25,26 +28,33 @@
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <h3>🛠️ 유저 역할 설정</h3>
-            <input id="targetNick" class="input-field" type="text" placeholder="대상 닉네임">
-            <select id="roleSelect" class="input-field">
-                <option value="멤버">멤버</option>
-                <option value="점원">☕ 점원</option>
-                <option value="주인장">👑 주인장</option>
-            </select>
-            <button onclick="applyRole()" style="background:var(--naver-green); color:white; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer;">적용하기</button>
-            <button onclick="toggleSettings()" style="background:#555; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">닫기</button>
+            <h2 style="margin:0;">🛠️ 카페 관리 센터</h2>
+            <div>
+                <label>대상 유저 닉네임</label>
+                <input id="targetNick" class="input-field" type="text" placeholder="정확한 닉네임 입력">
+            </div>
+            <div>
+                <label>부여할 역할</label>
+                <select id="roleSelect" class="input-field">
+                    <option value="멤버">일반 멤버</option>
+                    <option value="점원">☕ 점원 (부관리자)</option>
+                    <option value="주인장">👑 주인장 (관리자 전용)</option>
+                </select>
+            </div>
+            <p id="permHint" style="font-size:12px; color:#888;">* 점원은 '점원'을 임명할 수 없습니다.</p>
+            <button onclick="applyRole()" style="background:var(--naver-green); color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; cursor:pointer;">권한 변경 적용</button>
+            <button onclick="toggleSettings()" style="background:#555; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer;">관리창 닫기</button>
         </div>
     </div>
 
-    <footer>
-        <p>© 2026 우리 커뮤니티. All rights reserved.</p>
-    </footer>
+    <footer><p>© 2026 우리 커뮤니티. 주인장과 점원이 함께 운영합니다.</p></footer>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const board = document.getElementById('board');
+        const myNick = localStorage.getItem('userNickname') || "";
+        let currentRoles = {};
 
         function toggleSettings() {
             const modal = document.getElementById('settingsModal');
@@ -54,22 +64,43 @@
         function applyRole() {
             const nick = document.getElementById('targetNick').value;
             const role = document.getElementById('roleSelect').value;
-            if(!nick) return alert("닉네임을 입력하세요");
-            socket.emit('change_role', { targetNick: nick, newRole: role });
-            alert(nick + "님 설정 완료!");
+            socket.emit('change_role', { adminNick: myNick, targetNick: nick, newRole: role });
             toggleSettings();
         }
 
+        socket.on('alert', msg => alert(msg));
+        
         socket.on('load_history', (history) => {
             board.innerHTML = '';
             history.forEach(data => renderPost(data));
+            updateNoticeBar(history);
         });
 
-        socket.on('show_post', (data) => renderPost(data));
+        socket.on('show_post', (data) => {
+            renderPost(data);
+            if(data.isNotice) updateNoticeBar([data]);
+        });
+
+        socket.on('update_role_list', roles => {
+            currentRoles = roles;
+            // 내 역할이 주인장이나 점원이면 설정 아이콘 노출
+            const myRole = roles[myNick.split('#')[0]];
+            if(myRole === '주인장' || myRole === '점원') {
+                document.getElementById('adminIcon').style.display = 'block';
+            }
+        });
+
+        function updateNoticeBar(history) {
+            const lastNotice = [...history].reverse().find(p => p.isNotice);
+            if(lastNotice) {
+                document.getElementById('noticeBar').style.display = 'block';
+                document.getElementById('latestNotice').innerText = lastNotice.content.substring(0, 50) + "...";
+            }
+        }
 
         function renderPost(data) {
             const post = document.createElement('div');
-            post.className = 'post';
+            post.className = 'post' + (data.isNotice ? ' notice-post' : '');
             const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
             
             let badge = "";
@@ -82,7 +113,7 @@
                     <div><span class="post-nickname" style="${color}">${data.nickname}</span>${badge}</div>
                     <span style="font-size:12px; color:#888;">${data.time}</span>
                 </div>
-                <div class="post-content">${data.content}</div>
+                <div class="post-content">${data.isNotice ? '<strong>[공지] </strong>' : ''}${data.content}</div>
                 ${imgHtml}
             `;
             board.prepend(post);
