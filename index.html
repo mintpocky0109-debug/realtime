@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>커뮤니티 카페</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 답글 전용 스타일 */
+        .comment-item { padding: 15px; border-bottom: 1px solid #eee; background: #fff; }
+        .reply-item { 
+            margin-left: 40px; 
+            margin-top: 5px; 
+            padding: 12px; 
+            background: #f8f9fa; 
+            border-radius: 10px; 
+            border-left: 3px solid #ddd;
+        }
+        .reply-btn { font-size: 12px; color: var(--naver-green); cursor: pointer; margin-left: 10px; font-weight: bold; }
+        .reply-input-wrapper { margin-top: 10px; display: none; gap: 5px; }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -26,14 +40,15 @@
                 <div id="postList"></div>
             </div>
 
-            <div id="postDetailView" style="display:none; padding:40px; background:white; min-height:100%;">
+            <div id="postDetailView" style="display:none; padding:40px; background:white;">
                 <div style="cursor:pointer; color:#888; margin-bottom:30px; font-weight:bold;" onclick="closePost()">← 목록으로</div>
                 <div id="postDetailBody" class="post-detail-content"></div>
-                <div class="comment-section">
+                
+                <div class="comment-section" style="margin-top:40px;">
                     <h4 id="commentCountTitle">댓글</h4>
                     <div id="commentList"></div>
-                    <div id="commentInputArea" style="display:none; gap:10px; margin-top:30px; background:#f9fafb; padding:15px; border-radius:15px;">
-                        <input id="commentInput" type="text" placeholder="댓글을 남겨보세요..." class="input-style" style="margin:0;">
+                    <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
+                        <input id="commentInput" type="text" placeholder="댓글을 입력하세요..." class="input-style" style="margin:0;">
                         <button class="btn btn-green" onclick="submitComment()">등록</button>
                     </div>
                 </div>
@@ -44,43 +59,35 @@
     <div id="profileModal" class="modal">
         <div class="profile-card">
             <div class="profile-header">
-                <div id="profRole" style="font-size:12px; opacity:0.8; margin-bottom:5px;">멤버</div>
-                <h2 id="profNick" style="margin:0;">유저네임</h2>
+                <div id="profRole" style="font-size:11px; opacity:0.8;">멤버</div>
+                <h2 id="profNick" style="margin:5px 0 0 0;">닉네임</h2>
             </div>
-            <div class="profile-body">
-                <div style="font-weight:bold; font-size:14px; margin-bottom:10px; color:#888;">작성한 글 목록</div>
-                <div id="profPostList"></div>
-            </div>
-            <div style="padding:15px; border-top:1px solid #eee; text-align:center;">
-                <button class="btn" style="background:#eee; width:100%;" onclick="closeProfile()">닫기</button>
-            </div>
+            <div class="profile-body" id="profPostList"></div>
+            <div style="padding:15px; text-align:center;"><button class="btn" style="width:100%;" onclick="closeProfile()">닫기</button></div>
         </div>
     </div>
 
     <div id="loginModal" class="modal">
-        <div style="background:white; width:350px; border-radius:15px; overflow:hidden;">
-            <div style="display:flex; border-bottom:1px solid #eee;">
-                <div id="loginTab" style="flex:1; text-align:center; padding:15px; cursor:pointer;" class="active" onclick="toggleAuthTab('login')">로그인</div>
-                <div id="signupTab" style="flex:1; text-align:center; padding:15px; cursor:pointer;" onclick="toggleAuthTab('signup')">회원가입</div>
+        <div style="background:white; width:320px; border-radius:15px; padding:25px;">
+            <div style="display:flex; margin-bottom:20px;">
+                <div id="tabL" style="flex:1; text-align:center; cursor:pointer; font-weight:bold; color:var(--naver-green);" onclick="toggleAuthTab('login')">로그인</div>
+                <div id="tabS" style="flex:1; text-align:center; cursor:pointer; color:#aaa;" onclick="toggleAuthTab('signup')">회원가입</div>
             </div>
-            <div style="padding:25px;">
-                <input type="text" id="authId" placeholder="아이디" class="input-style">
-                <input type="password" id="authPw" placeholder="비밀번호" class="input-style">
-                <input type="text" id="authNick" placeholder="사용할 닉네임" class="input-style" style="display:none;">
-                <button id="authBtn" class="btn btn-green" style="width:100%;" onclick="handleAuth()">로그인</button>
-                <button class="btn" style="width:100%; margin-top:10px; background:#f0f0f0;" onclick="closeLogin()">닫기</button>
-            </div>
+            <input type="text" id="authId" placeholder="아이디" class="input-style">
+            <input type="password" id="authPw" placeholder="비밀번호" class="input-style">
+            <input type="text" id="authNick" placeholder="닉네임" class="input-style" style="display:none;">
+            <button id="authBtn" class="btn btn-green" style="width:100%;" onclick="handleAuth()">로그인</button>
+            <button class="btn" style="width:100%; margin-top:10px; background:#f0f0f0;" onclick="document.getElementById('loginModal').style.display='none'">취소</button>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // ... (이전과 동일한 스크립트 로직) ...
         const socket = io();
-        let allPosts = [], cafeConfig = {}, allUsers = [], openedPostId = null, authMode = 'login';
-        let currentUser = JSON.parse(localStorage.getItem('cafeUser')) || null;
+        let allPosts = [], cafeConfig = {}, currentUser = JSON.parse(localStorage.getItem('cafeUser')) || null;
+        let openedPostId = null, authMode = 'login';
 
-        socket.on('load_all', data => { cafeConfig = data.config; allPosts = data.posts; allUsers = data.users || []; renderAll(); });
+        socket.on('load_all', data => { cafeConfig = data.config; allPosts = data.posts; renderAll(); });
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(openedPostId) renderPostDetail(openedPostId); });
 
         function renderAll() {
@@ -94,17 +101,15 @@
         }
 
         function updateAuthUI() {
-            const headerAuth = document.getElementById('headerAuth');
-            const writeBtn = document.getElementById('writeBtnContainer');
-            const commentArea = document.getElementById('commentInputArea');
-            if (currentUser) {
-                headerAuth.innerHTML = `<span class="user-nick-click" onclick="openProfile('${currentUser.nickname}')">${currentUser.nickname}님</span> <button class="btn" style="background:#eee; margin-left:10px;" onclick="logout()">로그아웃</button>`;
-                writeBtn.style.display = 'block';
-                commentArea.style.display = 'flex';
+            const authH = document.getElementById('headerAuth');
+            const writeB = document.getElementById('writeBtnContainer');
+            if(currentUser) {
+                authH.innerHTML = `<span class="user-nick-click" onclick="openProfile('${currentUser.nickname}')">${currentUser.nickname}님</span> <button class="btn" style="margin-left:10px; height:30px; padding:0 10px;" onclick="logout()">로그아웃</button>`;
+                writeB.style.display = 'block';
+                document.getElementById('commentInputArea').style.display = 'flex';
             } else {
-                headerAuth.innerHTML = `<button class="btn btn-green" onclick="openLogin()">로그인 / 가입</button>`;
-                writeBtn.style.display = 'none';
-                commentArea.style.display = 'none';
+                authH.innerHTML = `<button class="btn btn-green" onclick="openLogin()">로그인 / 가입</button>`;
+                writeB.style.display = 'none';
             }
         }
 
@@ -114,44 +119,73 @@
             const filtered = (title === "전체보기") ? allPosts : allPosts.filter(p => p.board === title);
             list.innerHTML = filtered.slice().reverse().map(p => `
                 <div class="post-list-item" onclick="openPost(${p.id})">
-                    <div style="font-weight:bold; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.content.substring(0,40)}</div>
-                    <div style="font-size:13px; color:#888; margin-top:5px;">
-                        <span class="user-nick-click" onclick="event.stopPropagation(); openProfile('${p.nickname}')">${p.nickname}</span> · ☕ ${p.likedBy.length} · 댓글 ${p.comments.length}
+                    <div style="font-weight:bold;">${p.content.substring(0,35)}...</div>
+                    <div style="font-size:12px; color:#888; margin-top:5px;">
+                        <span class="user-nick-click" onclick="event.stopPropagation(); openProfile('${p.nickname}')">${p.nickname}</span> · 댓글 ${countTotalComments(p)}
                     </div>
                 </div>
             `).join('');
         }
 
-        function openPost(id) {
-            openedPostId = id;
-            document.getElementById('listView').style.display = 'none';
-            document.getElementById('postDetailView').style.display = 'block';
-            window.scrollTo(0,0);
-            renderPostDetail(id);
+        function countTotalComments(post) {
+            let count = post.comments.length;
+            post.comments.forEach(c => count += c.replies.length);
+            return count;
         }
 
         function renderPostDetail(id) {
             const post = allPosts.find(p => p.id === id);
             if(!post) return;
             const isLiked = currentUser && post.likedBy.includes(currentUser.nickname);
+            
             document.getElementById('postDetailBody').innerHTML = `
-                <div style="margin-bottom:10px;"><span class="badge" style="background:var(--naver-green-light); color:var(--naver-green); padding:5px 10px; border-radius:5px;">${post.board}</span></div>
-                <h1 style="margin:0 0 5px 0;"><span class="user-nick-click" onclick="openProfile('${post.nickname}')">${post.nickname}</span> <span class="badge" style="background:var(--naver-green); color:white; font-size:10px; vertical-align:middle;">${post.role}</span></h1>
-                <div style="color:#bbb; font-size:13px; margin-bottom:30px;">${post.time}</div>
-                <div style="font-size:17px; white-space:pre-wrap; min-height:100px;">${post.content}</div>
-                ${post.image ? `<img src="${post.image}" style="max-width:100%; border-radius:10px; margin-top:20px;">` : ""}
-                <div style="text-align:center; margin:40px 0;">
-                    <button class="btn" style="border:1.5px solid ${isLiked?'var(--naver-green)':'#ddd'}; background:${isLiked?'var(--naver-green-light)':'white'};" 
-                        onclick="toggleLike(${post.id})">☕ 커피 쏘기 ${post.likedBy.length}</button>
+                <h2>${post.content.substring(0,20)}...</h2>
+                <div style="margin-bottom:20px;"><span class="user-nick-click" onclick="openProfile('${post.nickname}')">${post.nickname}</span> <span class="badge" style="background:var(--naver-green); color:white;">${post.role}</span></div>
+                <div style="font-size:16px; white-space:pre-wrap;">${post.content}</div>
+                ${post.image ? `<img src="${post.image}" style="max-width:100%; margin-top:20px; border-radius:10px;">` : ""}
+                <div style="text-align:center; margin-top:30px;">
+                    <button class="btn" style="border:1px solid #ddd; background:${isLiked?'var(--naver-green-light)':'#fff'}" onclick="toggleLike(${post.id})">☕ 커피 ${post.likedBy.length}</button>
                 </div>
             `;
-            document.getElementById('commentCountTitle').innerText = `댓글 ${post.comments.length}`;
-            document.getElementById('commentList').innerHTML = post.comments.map(c => `
-                <div class="comment">
-                    <div style="font-weight:bold; font-size:13px;"><span class="user-nick-click" onclick="openProfile('${c.nickname}')">${c.nickname}</span> <span style="font-size:11px; color:#bbb; margin-left:10px;">${c.time}</span></div>
-                    <div style="font-size:14px; margin-top:5px;">${c.content}</div>
-                </div>
-            `).join('');
+
+            let commHtml = "";
+            post.comments.forEach(c => {
+                commHtml += `
+                    <div class="comment-item">
+                        <div style="font-weight:bold; font-size:13px;"><span class="user-nick-click" onclick="openProfile('${c.nickname}')">${c.nickname}</span> <span style="font-weight:normal; color:#aaa; margin-left:10px;">${c.time}</span></div>
+                        <div style="margin:5px 0;">${c.content}</div>
+                        <span class="reply-btn" onclick="showReplyInput(${c.id})">답글 달기</span>
+                        <div id="replyInput-${c.id}" class="reply-input-wrapper">
+                            <input type="text" id="replyText-${c.id}" class="input-style" placeholder="답글을 입력하세요..." style="margin:0; flex:1;">
+                            <button class="btn btn-green" onclick="submitComment(${c.id})">등록</button>
+                        </div>
+                    </div>
+                `;
+                c.replies.forEach(r => {
+                    commHtml += `
+                        <div class="reply-item">
+                            <div style="font-weight:bold; font-size:13px;"><span class="user-nick-click" onclick="openProfile('${r.nickname}')">${r.nickname}</span> <span style="font-weight:normal; color:#aaa; margin-left:10px;">${r.time}</span></div>
+                            <div style="margin:5px 0;">${r.content}</div>
+                        </div>
+                    `;
+                });
+            });
+            document.getElementById('commentList').innerHTML = commHtml;
+            document.getElementById('commentCountTitle').innerText = `댓글 ${countTotalComments(post)}`;
+        }
+
+        function showReplyInput(id) {
+            const el = document.getElementById(`replyInput-${id}`);
+            el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function submitComment(parentId = null) {
+            if(!currentUser) return alert("로그인이 필요합니다.");
+            const inputId = parentId ? `replyText-${parentId}` : `commentInput`;
+            const content = document.getElementById(inputId).value.trim();
+            if(!content) return;
+            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content, parentId });
+            document.getElementById(inputId).value = "";
         }
 
         function openProfile(nick) {
@@ -159,15 +193,12 @@
             document.getElementById('profNick').innerText = nick;
             document.getElementById('profRole').innerText = userPosts.length > 0 ? userPosts[0].role : "멤버";
             document.getElementById('profPostList').innerHTML = userPosts.reverse().map(p => `
-                <div class="user-post-link" onclick="closeProfile(); openPost(${p.id})">[${p.board}] ${p.content.substring(0,25)}...</div>
-            `).join('') || '<div style="padding:20px; text-align:center; color:#ccc;">작성글이 없습니다.</div>';
+                <div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" onclick="closeProfile(); openPost(${p.id})">
+                    [${p.board}] ${p.content.substring(0,20)}...
+                </div>
+            `).join('') || '<div style="padding:20px; color:#ccc;">작성글이 없습니다.</div>';
             document.getElementById('profileModal').style.display = 'flex';
         }
-
-        function closeProfile() { document.getElementById('profileModal').style.display = 'none'; }
-        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
-        function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
-        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
 
         async function handleAuth() {
             const userId = document.getElementById('authId').value;
@@ -176,43 +207,35 @@
             const url = authMode === 'login' ? '/api/login' : '/api/signup';
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, password, nickname }) });
             const data = await res.json();
-            if (data.success) {
-                if (authMode === 'login') {
+            if(data.success) {
+                if(authMode === 'login') {
                     currentUser = data.user;
                     localStorage.setItem('cafeUser', JSON.stringify(currentUser));
                     location.reload();
-                } else { alert("가입 완료! 로그인하세요."); toggleAuthTab('login'); }
+                } else { alert("가입 성공! 로그인해 주세요."); toggleAuthTab('login'); }
             } else alert(data.msg);
         }
 
-        function toggleAuthTab(mode) {
-            authMode = mode;
-            document.getElementById('loginTab').className = mode === 'login' ? 'active' : '';
-            document.getElementById('signupTab').className = mode === 'signup' ? 'active' : '';
-            document.getElementById('authNick').style.display = mode === 'signup' ? 'block' : 'none';
-            document.getElementById('authBtn').innerText = mode === 'login' ? '로그인' : '회원가입';
+        function toggleAuthTab(m) {
+            authMode = m;
+            document.getElementById('tabL').style.color = (m==='login')?'var(--naver-green)':'#aaa';
+            document.getElementById('tabS').style.color = (m==='signup')?'var(--naver-green)':'#aaa';
+            document.getElementById('authNick').style.display = (m==='signup')?'block':'none';
+            document.getElementById('authBtn').innerText = (m==='login')?'로그인':'회원가입';
         }
 
-        function toggleLike(postId) {
-            if(!currentUser) return alert("로그인 후 이용 가능합니다.");
-            socket.emit('like_post', { postId, nickname: currentUser.nickname });
-        }
-
-        function submitComment() {
-            const val = document.getElementById('commentInput').value.trim();
-            if(!val || !currentUser) return;
-            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content: val });
-            document.getElementById('commentInput').value = "";
-        }
-
+        function toggleLike(postId) { socket.emit('like_post', { postId, nickname: currentUser.nickname }); }
+        function openPost(id) { openedPostId = id; document.getElementById('listView').style.display = 'none'; document.getElementById('postDetailView').style.display = 'block'; renderPostDetail(id); }
+        function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
+        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
+        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
+        function closeProfile() { document.getElementById('profileModal').style.display = 'none'; }
         function filterBoard(name, el) {
             document.querySelectorAll('.board-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
             document.getElementById('currentBoardTitle').innerText = name;
             closePost(); renderPosts();
         }
-
-        function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
     </script>
 </body>
 </html>

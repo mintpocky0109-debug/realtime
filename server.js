@@ -18,6 +18,9 @@ const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
+// ⭐ 주인장 아이디 설정 (본인이 가입할 아이디로 바꾸세요)
+const ADMIN_ID = "Mintpocky"; 
+
 const loadJson = (file, defaultVal) => {
     try {
         return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : defaultVal;
@@ -34,35 +37,37 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     staffList: []
 });
 
-// [중요] 페이지 라우팅 설정 - 'Cannot GET /write' 에러 해결
+// 라우팅: /write 접속 시 write.html 제공
 app.get('/write', (req, res) => {
     res.sendFile(path.join(__dirname, 'write.html'));
 });
 
+// 회원가입: 중복 체크 및 어드민 고정
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
-    if (users.find(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
+    if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
     
-    let finalNick = nickname, role = "멤버";
-    // 안내 문구는 없앴지만, 관리자 임명 기능은 유지 (비밀 코드 형식)
-    if (nickname.includes('#admin777')) {
-        finalNick = nickname.replace('#admin777', '');
-        if (!cafeConfig.ownerNick) {
-            cafeConfig.ownerNick = finalNick;
-            role = "주인장";
-            fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
-        }
+    let role = (userId === ADMIN_ID) ? "주인장" : "멤버";
+    users.push({ userId, password, nickname, role });
+    
+    if(role === "주인장") {
+        cafeConfig.ownerNick = nickname;
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
     }
-    users.push({ userId, password, nickname: finalNick, role });
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
+// 로그인
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
-    if (user) res.json({ success: true, user: { nickname: user.nickname, role: user.role } });
-    else res.json({ success: false, msg: "아이디 또는 비밀번호가 틀렸습니다." });
+    if (user) {
+        const role = (user.userId === ADMIN_ID) ? "주인장" : user.role;
+        res.json({ success: true, user: { nickname: user.nickname, role: role } });
+    } else {
+        res.json({ success: false, msg: "아이디 또는 비밀번호가 틀렸습니다." });
+    }
 });
 
 io.on('connection', (socket) => {
@@ -70,33 +75,54 @@ io.on('connection', (socket) => {
 
     socket.on('new_post', (data) => {
         const user = users.find(u => u.nickname === data.nickname);
-        const role = user ? (cafeConfig.ownerNick === user.nickname ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버")) : "멤버";
-        const newPost = { id: Date.now(), board: data.board, nickname: data.nickname, role: role, content: data.content, image: data.image, time: new Date().toLocaleString(), likedBy: [], comments: [] };
+        const newPost = { 
+            id: Date.now(), board: data.board, nickname: data.nickname, 
+            role: user ? user.role : "멤버", content: data.content, 
+            image: data.image, time: new Date().toLocaleString(), 
+            likedBy: [], comments: [] 
+        };
         posts.push(newPost);
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
 
-    socket.on('like_post', (data) => {
-        const post = posts.find(p => p.id === data.postId);
-        if(post && data.nickname) {
-            const index = post.likedBy.indexOf(data.nickname);
-            if(index === -1) post.likedBy.push(data.nickname);
-            else post.likedBy.splice(index, 1);
-            io.emit('update_posts', posts);
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
-        }
-    });
-
+    // 댓글 및 답글 통합 로직
     socket.on('new_comment', (data) => {
         const post = posts.find(p => p.id === data.postId);
         if(post) {
-            post.comments.push({ id: Date.now(), nickname: data.nickname, content: data.content, time: new Date().toLocaleTimeString() });
+            const commentObj = {
+                id: Date.now(),
+                nickname: data.nickname,
+                content: data.content,
+                time: new Date().toLocaleTimeString(),
+                replies: [] // 답글을 담을 배열
+            };
+
+            if (data.parentId) {
+                // 답글인 경우
+                const parentComment = post.comments.find(c => c.id === data.parentId);
+                if (parentComment) parentComment.replies.push(commentObj);
+            } else {
+                // 일반 댓글인 경우
+                post.comments.push(commentObj);
+            }
+            
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
             io.emit('update_posts', posts);
+        }
+    });
+
+    socket.on('like_post', (data) => {
+        const post = posts.find(p => p.id === data.postId);
+        if(post) {
+            const idx = post.likedBy.indexOf(data.nickname);
+            if(idx === -1) post.likedBy.push(data.nickname);
+            else post.likedBy.splice(idx, 1);
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
+            io.emit('update_posts', posts);
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server is running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
