@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
             content: data.content,
             image: data.image,
             time: new Date().toLocaleString(),
-            likedBy: [], // 좋아요 누른 사람들 목록
+            likedBy: [],
             comments: []
         };
         posts.push(newPost);
@@ -65,16 +65,12 @@ io.on('connection', (socket) => {
         io.emit('update_posts', posts);
     });
 
-    // 커피 쏘기 (좋아요 토글)
     socket.on('like_post', (data) => {
         const post = posts.find(p => p.id === data.postId);
         if(post && data.nickname) {
             const index = post.likedBy.indexOf(data.nickname);
-            if(index === -1) {
-                post.likedBy.push(data.nickname);
-            } else {
-                post.likedBy.splice(index, 1);
-            }
+            if(index === -1) post.likedBy.push(data.nickname);
+            else post.likedBy.splice(index, 1);
             io.emit('update_posts', posts);
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
         }
@@ -118,4 +114,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server started on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
