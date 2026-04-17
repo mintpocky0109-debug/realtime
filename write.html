@@ -2,32 +2,27 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>글 쓰기</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글쓰기</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body style="background: white;">
-    <div class="write-layout">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-            <button onclick="location.href='/'" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
-            <strong style="font-size:18px;">카페 글쓰기</strong>
-            <button onclick="send()" class="btn btn-main">등록</button>
-        </div>
-
-        <input id="nickname" type="text" placeholder="닉네임을 입력하세요" style="width:100%; border:none; border-bottom:1px solid #eee; padding:15px 0; font-size:16px; outline:none;">
-
-        <div style="flex:1; display:flex; flex-direction:column; position:relative;">
-            <textarea id="content" placeholder="내용을 입력하세요."></textarea>
-            
-            <div id="preview" style="margin-top:10px;"></div>
-            
-            <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
-                <button onclick="document.getElementById('imgIn').click()" style="background:#f5f5f5; border:1px solid #ddd; padding:8px 15px; border-radius:5px; cursor:pointer;">📷 사진 추가</button>
-                <span id="imgStatus" style="font-size:12px; color:#888;"></span>
-            </div>
-        </div>
+<body style="background:#fff; padding:20px;">
+    <div style="max-width:600px; margin:0 auto;">
+        <h2>📝 새 글 작성</h2>
+        <p style="font-size:12px; color:#888;">주인장 등록은 닉네임 뒤에 <b>#admin777</b>을 붙이세요.</p>
+        <select id="boardSelect" class="input-style"></select>
+        <input id="nickname" type="text" placeholder="닉네임" class="input-style">
+        <textarea id="content" placeholder="카페 운영 원칙을 준수해주세요." class="input-style" style="height:250px; resize:none;"></textarea>
         
-        <input type="file" id="imgIn" accept="image/*" style="display:none;">
+        <div style="margin:15px 0;">
+            <input type="file" id="imgIn">
+            <div id="preview"></div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="flex:1;" onclick="history.back()">취소</button>
+            <button class="btn btn-green" style="flex:2;" onclick="send()">등록</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -35,30 +30,28 @@
         const socket = io();
         let b64 = "";
 
-        document.getElementById('nickname').value = localStorage.getItem('userNickname') || "";
+        socket.on('load_all', data => {
+            document.getElementById('boardSelect').innerHTML = data.config.boards.map(b => `<option value="${b}">${b}</option>`).join('');
+        });
 
         document.getElementById('imgIn').onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
             const reader = new FileReader();
             reader.onload = (ev) => {
                 b64 = ev.target.result;
-                document.getElementById('preview').innerHTML = `<img src="${b64}" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:1px solid #eee;">`;
-                document.getElementById('imgStatus').innerText = "사진이 선택되었습니다.";
+                document.getElementById('preview').innerHTML = `<img src="${b64}" style="width:100px; margin-top:10px;">`;
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(e.target.files[0]);
         };
 
         function send() {
-            const n = document.getElementById('nickname').value.trim();
-            const c = document.getElementById('content').value.trim();
-            if(!n || !c) return alert("닉네임과 내용을 모두 입력해주세요.");
+            const board = document.getElementById('boardSelect').value;
+            const nick = document.getElementById('nickname').value;
+            const content = document.getElementById('content').value;
+            if(!nick || !content) return alert("모두 입력해주세요.");
             
-            localStorage.setItem('userNickname', n);
-            socket.emit('new_post', { nickname: n, content: c, image: b64 });
-            
-            setTimeout(() => { location.href = '/'; }, 200);
+            localStorage.setItem('userNickname', nick.replace('#admin777', ''));
+            socket.emit('new_post', { board, nickname: nick, content, image: b64 });
+            setTimeout(() => location.href = '/', 200);
         }
     </script>
 </body>

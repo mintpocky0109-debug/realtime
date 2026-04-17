@@ -23,50 +23,98 @@ const loadJson = (file, defaultVal) => {
     } catch (e) { return defaultVal; }
 };
 
-let messages = loadJson(DATA_FILE, []);
+let posts = loadJson(DATA_FILE, []);
 let cafeConfig = loadJson(CONFIG_FILE, {
     themeColor: "#2db400",
-    bgColor: "#f2f4f7",
-    cafeName: "🚀 내 전용 커뮤니티"
+    cafeName: "☕ 카페 에스프레소",
+    boards: ["자유게시판", "공지사항", "가입인사"],
+    ownerNick: null, // 주인장은 단 한 명
+    staffList: []    // 점원 목록
 });
-
-let userRoles = {};
 
 io.on('connection', (socket) => {
-    socket.emit('load_history', messages);
-    socket.emit('update_config', cafeConfig);
+    // 최초 접속 시 권한 정보 포함 전송
+    socket.emit('load_all', { posts, config: cafeConfig });
 
+    // 글 작성 및 권한 부여
     socket.on('new_post', (data) => {
         let role = "멤버";
-        let finalNick = data.nickname;
+        let nick = data.nickname;
 
-        if (data.nickname.includes('#master123')) {
-            finalNick = data.nickname.replace('#master123', '');
-            userRoles[finalNick] = "주인장";
+        // 주인장 최초 등록 또는 인증 (비밀코드 #admin777 가정)
+        if (nick.includes('#admin777')) {
+            nick = nick.replace('#admin777', '');
+            if (!cafeConfig.ownerNick || cafeConfig.ownerNick === nick) {
+                cafeConfig.ownerNick = nick; // 주인장 영구 등록
+                role = "주인장";
+                fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+            }
+        } else if (nick === cafeConfig.ownerNick) {
             role = "주인장";
-        } else if (userRoles[data.nickname] === "주인장") {
-            role = "주인장";
+        } else if (cafeConfig.staffList.includes(nick)) {
+            role = "점원";
         }
 
-        const messageData = {
-            nickname: finalNick,
+        const newPost = {
+            id: Date.now(),
+            board: data.board,
+            nickname: nick,
+            role: role,
             content: data.content,
             image: data.image,
-            role: role,
-            time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+            time: new Date().toLocaleString(),
+            likes: 0,
+            comments: []
         };
-
-        messages.push(messageData);
-        fs.writeFileSync(DATA_FILE, JSON.stringify(messages, null, 2));
-        io.emit('load_history', messages);
+        posts.push(newPost);
+        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+        io.emit('update_posts', posts);
     });
 
-    socket.on('update_cafe_settings', (data) => {
-        cafeConfig = { ...cafeConfig, ...data.settings };
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
-        io.emit('update_config', cafeConfig);
+    // 커피(좋아요)
+    socket.on('like_post', (postId) => {
+        const post = posts.find(p => p.id === postId);
+        if(post) { post.likes++; io.emit('update_posts', posts); fs.writeFileSync(DATA_FILE, JSON.stringify(posts)); }
+    });
+
+    // 댓글/답글
+    socket.on('new_comment', (data) => {
+        const post = posts.find(p => p.id === data.postId);
+        if(post) {
+            post.comments.push({
+                id: Date.now(),
+                nickname: data.nickname,
+                content: data.content,
+                parentId: data.parentId || null,
+                time: new Date().toLocaleTimeString()
+            });
+            io.emit('update_posts', posts);
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
+        }
+    });
+
+    // 관리자 기능 (보안 강화)
+    socket.on('admin_action', (data) => {
+        const isOwner = data.adminNick === cafeConfig.ownerNick;
+        const isStaff = cafeConfig.staffList.includes(data.adminNick);
+
+        if (data.type === 'hire' && isOwner) { // 점원 고용은 주인장만 가능
+            if (!cafeConfig.staffList.includes(data.targetNick)) {
+                cafeConfig.staffList.push(data.targetNick);
+                fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+                io.emit('update_config', cafeConfig);
+            }
+        } else if (data.type === 'config' && (isOwner || isStaff)) { // 디자인은 둘 다 가능
+            cafeConfig = { ...cafeConfig, ...data.config };
+            fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+            io.emit('update_config', cafeConfig);
+        } else if (data.type === 'delete_all' && isOwner) { // 전체 삭제는 주인장만
+            posts = [];
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
+            io.emit('update_posts', posts);
+        }
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+const PORT = 3000;
+server.listen(PORT, "0.0.0.0", () => console.log(`http://localhost:${PORT}`));

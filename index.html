@@ -2,37 +2,66 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>내 전용 커뮤니티</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>커뮤니티 카페</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="settings-icon" onclick="openSettings()">⚙️</div>
-
-    <header class="cafe-header">
-        <div class="container">
-            <h1 id="cafeTitle">🚀 로딩 중...</h1>
+    <header class="header">
+        <h1 id="cafeName" style="margin:0; font-size:22px;">☕ 로딩중...</h1>
+        <div class="header-btns">
+            <button class="btn" onclick="openSettings()" style="background:#eee;">⚙️ 설정</button>
+            <button class="btn btn-green" onclick="location.href='/write'">📝 글쓰기</button>
         </div>
     </header>
 
-    <main class="container">
-        <div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
-            <button class="btn btn-main" onclick="location.href='/write'">📝 글쓰기</button>
-        </div>
+    <div class="main-wrapper">
+        <nav class="sidebar">
+            <h3 style="padding:10px;">게시판 목록</h3>
+            <div class="board-item active" onclick="filterBoard('전체보기')">전체보기</div>
+            <div id="boardList"></div>
+        </nav>
 
-        <div id="board"></div>
-    </main>
+        <section class="content">
+            <h2 id="currentBoardTitle" style="border-bottom:2px solid #333; padding-bottom:10px;">전체보기</h2>
+            <div id="postList"></div>
+        </section>
+    </div>
 
-    <div id="settingsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding: 20px;">
-        <div style="background:white; border-radius:15px; width:100%; max-width:500px; overflow:hidden; display:flex; flex-direction:column;">
-            <div style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                <strong>카페 설정</strong>
-                <span onclick="closeSettings()" style="cursor:pointer;">✕</span>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content" style="max-width:400px; height:auto; padding:20px;">
+            <h3 id="setRoleTitle">설정</h3>
+            <div id="adminOptions" style="display:none;">
+                <p>🎨 카페 디자인 (주인장/점원)</p>
+                <input type="text" id="newCafeName" placeholder="카페 이름 변경" class="input-style">
+                <input type="color" id="newThemeColor" style="width:100%; height:40px; margin-bottom:15px;">
+                <button class="btn btn-green" style="width:100%;" onclick="updateDesign()">디자인 저장</button>
+                <hr>
+                <div id="ownerOnlyOptions" style="display:none; margin-top:15px;">
+                    <p>🛡️ 주인장 전용</p>
+                    <input type="text" id="staffNick" placeholder="점원 임명할 닉네임" class="input-style">
+                    <button class="btn" style="width:100%; background:orange; color:white;" onclick="hireStaff()">점원 고용하기</button>
+                    <button class="btn" style="width:100%; background:red; color:white; margin-top:10px;" onclick="deleteAllPosts()">전체 글 삭제</button>
+                </div>
             </div>
-            <div style="padding:20px;">
-                <label>테마 색상 변경</label>
-                <input type="color" id="themePick" style="width:100%; height:40px; margin:10px 0;">
-                <button onclick="saveSettings()" class="btn btn-main" style="width:100%;">저장하기</button>
+            <div id="memberOptions">
+                <p>👤 내 정보</p>
+                <div id="myStatusInfo">로그인 정보를 확인하세요.</div>
+            </div>
+            <button class="btn" style="width:100%; margin-top:20px;" onclick="closeSettings()">닫기</button>
+        </div>
+    </div>
+
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <strong id="modalBoardName">게시판</strong>
+                <span onclick="closeModal()" style="cursor:pointer; font-size:24px;">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <input id="commentInput" type="text" placeholder="댓글을 입력하세요..." style="flex:1; padding:12px; border:1px solid #ddd; border-radius:6px;">
+                <button class="btn btn-green" onclick="submitComment()">등록</button>
             </div>
         </div>
     </div>
@@ -40,43 +69,126 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let allPosts = [], cafeConfig = {}, openedPostId = null, replyTargetId = null;
         const myNick = localStorage.getItem('userNickname') || "";
 
-        function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
-        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-
-        socket.on('update_config', c => {
-            document.getElementById('cafeTitle').innerText = c.cafeName;
-            document.documentElement.style.setProperty('--naver-green', c.themeColor);
+        socket.on('load_all', data => {
+            cafeConfig = data.config;
+            allPosts = data.posts;
+            renderAll();
         });
 
-        socket.on('load_history', h => {
-            const board = document.getElementById('board');
-            board.innerHTML = '';
-            [...h].reverse().forEach(d => {
-                const p = document.createElement('div');
-                p.className = 'post';
-                
-                const roleBadge = d.role === "주인장" ? `<span style="color:var(--naver-green); border:1px solid var(--naver-green); padding:1px 4px; border-radius:3px; font-size:11px; margin-right:5px;">주인장</span>` : "";
-                const img = d.image ? `<img src="${d.image}" class="post-image">` : "";
-                
-                p.innerHTML = `
-                    <div class="post-header">
-                        <div class="post-author">${roleBadge}${d.nickname}</div>
-                        <div class="post-time">${d.time}</div>
-                    </div>
-                    <div class="post-content">${d.content}</div>
-                    ${img}
-                `;
-                board.appendChild(p);
-            });
+        socket.on('update_config', c => { cafeConfig = c; renderAll(); });
+        socket.on('update_posts', p => { 
+            allPosts = p; 
+            renderPosts(); 
+            if(openedPostId) renderModal(openedPostId); 
         });
 
-        function saveSettings() {
-            const color = document.getElementById('themePick').value;
-            socket.emit('update_cafe_settings', { adminNick: myNick, settings: { themeColor: color } });
-            closeSettings();
+        function renderAll() {
+            document.getElementById('cafeName').innerText = cafeConfig.cafeName;
+            document.documentElement.style.setProperty('--naver-green', cafeConfig.themeColor);
+            const container = document.getElementById('boardList');
+            container.innerHTML = cafeConfig.boards.map(b => `<div class="board-item" onclick="filterBoard('${b}')">${b}</div>`).join('');
+            renderPosts();
         }
+
+        function renderPosts() {
+            const list = document.getElementById('postList');
+            const filtered = (document.getElementById('currentBoardTitle').innerText === "전체보기") 
+                ? allPosts : allPosts.filter(p => p.board === document.getElementById('currentBoardTitle').innerText);
+            
+            list.innerHTML = filtered.slice().reverse().map(p => `
+                <div class="post-list-item" onclick="openPost(${p.id})">
+                    <div>
+                        <span class="badge">${p.board}</span>
+                        <span style="font-weight:bold; margin-left:8px;">${p.content.substring(0,30)}...</span>
+                        <span style="color:var(--naver-green); margin-left:5px;">(${p.comments.length})</span>
+                    </div>
+                    <div style="font-size:13px; color:#888;">${p.nickname} | ☕ ${p.likes}</div>
+                </div>
+            `).join('');
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            const isOwner = (myNick === cafeConfig.ownerNick);
+            const isStaff = cafeConfig.staffList.includes(myNick);
+
+            if(isOwner || isStaff) {
+                document.getElementById('adminOptions').style.display = 'block';
+                if(isOwner) document.getElementById('ownerOnlyOptions').style.display = 'block';
+            }
+            document.getElementById('myStatusInfo').innerText = `내 닉네임: ${myNick || '없음'}\n권한: ${isOwner ? '주인장' : isStaff ? '점원' : '멤버'}`;
+        }
+
+        function updateDesign() {
+            const name = document.getElementById('newCafeName').value || cafeConfig.cafeName;
+            const color = document.getElementById('newThemeColor').value;
+            socket.emit('admin_action', { type: 'config', adminNick: myNick, config: { cafeName: name, themeColor: color } });
+            alert("변경되었습니다.");
+        }
+
+        function hireStaff() {
+            const target = document.getElementById('staffNick').value;
+            if(!target) return;
+            socket.emit('admin_action', { type: 'hire', adminNick: myNick, targetNick: target });
+            alert(`${target}님을 점원으로 임명했습니다.`);
+        }
+
+        function deleteAllPosts() {
+            if(confirm("모든 게시글을 삭제하시겠습니까?")) {
+                socket.emit('admin_action', { type: 'delete_all', adminNick: myNick });
+            }
+        }
+
+        function openPost(id) {
+            openedPostId = id;
+            document.getElementById('postModal').style.display = 'flex';
+            renderModal(id);
+        }
+
+        function renderModal(id) {
+            const post = allPosts.find(p => p.id === id);
+            if(!post) return;
+            const modalBody = document.getElementById('modalBody');
+            
+            const commentsHtml = post.comments.filter(c => !c.parentId).map(c => `
+                <div class="comment">
+                    <strong>${c.nickname}</strong>: ${c.content} <span onclick="setReply(${c.id})" style="color:blue; cursor:pointer; font-size:11px;">[답글]</span>
+                    ${post.comments.filter(r => r.parentId === c.id).map(r => `
+                        <div class="reply">↳ <strong>${r.nickname}</strong>: ${r.content}</div>
+                    `).join('')}
+                </div>
+            `).join('');
+
+            modalBody.innerHTML = `
+                <h3>${post.nickname} <small style="color:#888;">${post.role}</small></h3>
+                <p style="color:#999; font-size:12px;">${post.time}</p>
+                <div style="font-size:16px; margin:20px 0;">${post.content}</div>
+                ${post.image ? `<img src="${post.image}" style="width:100%; border-radius:8px;">` : ""}
+                <div style="text-align:center; margin-top:20px;">
+                    <button class="btn" onclick="socket.emit('like_post', ${post.id})">☕ 커피쏘기 ${post.likes}</button>
+                </div>
+                <div style="margin-top:30px;">${commentsHtml}</div>
+            `;
+        }
+
+        function submitComment() {
+            const val = document.getElementById('commentInput').value;
+            if(!val || !myNick) return alert("로그인(글쓰기) 후 이용 가능합니다.");
+            socket.emit('new_comment', { postId: openedPostId, nickname: myNick, content: val, parentId: replyTargetId });
+            document.getElementById('commentInput').value = "";
+            replyTargetId = null;
+        }
+
+        function filterBoard(name) {
+            document.getElementById('currentBoardTitle').innerText = name;
+            renderPosts();
+        }
+        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+        function closeModal() { document.getElementById('postModal').style.display = 'none'; openedPostId = null; }
+        function setReply(id) { replyTargetId = id; document.getElementById('commentInput').placeholder = "답글 작성 중..."; }
     </script>
 </body>
 </html>
