@@ -4,87 +4,43 @@
     --naver-bg: #f2f4f7;
     --white: #ffffff;
     --border-color: #e5e7eb;
-    --text-main: #1a1a1a;
-    --text-sub: #4b5563;
-    --text-gray: #9ca3af;
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { margin: 0; background-color: var(--naver-bg); color: var(--text-main); font-family: 'Pretendard', sans-serif; line-height: 1.6; }
+* { box-sizing: border-box; font-family: 'Pretendard', sans-serif; }
+body { margin: 0; background-color: var(--naver-bg); color: #1a1a1a; line-height: 1.6; }
 
-/* 레이아웃 */
-.header { background: var(--white); height: 65px; padding: 0 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+/* 텍스트 깨짐 방지 */
+.btn, .badge, .board-item, .settings-nav-item, .user-nick-click {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.user-nick-click { cursor: pointer; text-decoration: none; font-weight: bold; color: inherit; }
+.user-nick-click:hover { text-decoration: underline; color: var(--naver-green); }
+
+.header { background: var(--white); height: 65px; padding: 0 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
 .main-wrapper { display: flex; max-width: 1100px; margin: 0 auto; min-height: calc(100vh - 65px); }
 .sidebar { width: 230px; background: var(--white); border-right: 1px solid var(--border-color); padding: 25px 12px; flex-shrink: 0; }
-.content { flex: 1; background: var(--white); position: relative; min-width: 0; } /* min-width: 0 필수 (이미지 넘침 방지) */
+.content { flex: 1; background: var(--white); position: relative; min-width: 0; }
 
-/* 게시판 목록 */
-.board-item { padding: 12px 18px; cursor: pointer; border-radius: 10px; font-size: 14px; margin-bottom: 4px; transition: 0.2s; color: #444; font-weight: 500; }
-.board-item:hover { background: var(--naver-green-light); color: var(--naver-green); }
+.board-item { padding: 12px 18px; cursor: pointer; border-radius: 10px; font-size: 14px; margin-bottom: 4px; transition: 0.2s; color: #444; }
 .board-item.active { background: var(--naver-green-light); color: var(--naver-green); font-weight: bold; }
 
-/* 리스트 & 상세페이지 */
 .post-list-item { padding: 20px 25px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: 0.2s; }
 .post-list-item:hover { background: #fafafa; }
 
-/* [중요] 게시글 이미지 뚫고나감 해결 */
-.post-detail-content img { 
-    max-width: 100%; 
-    height: auto; 
-    border-radius: 12px; 
-    margin: 25px 0; 
-    display: block; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
+.post-detail-content img { max-width: 100%; border-radius: 12px; margin: 25px 0; display: block; }
 
-/* 탭 형태의 설정창(모달) 디자인 */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-.settings-container { 
-    background: white; 
-    width: 90%; 
-    max-width: 700px; 
-    height: 500px; 
-    border-radius: 20px; 
-    display: flex; 
-    overflow: hidden; 
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-}
+/* 모달 공통 */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(2px); }
 
-.settings-nav { 
-    width: 200px; 
-    background: #f9fafb; 
-    border-right: 1px solid #eee; 
-    padding: 30px 15px;
-}
-.settings-nav-item { 
-    padding: 12px 15px; 
-    border-radius: 8px; 
-    font-size: 14px; 
-    cursor: pointer; 
-    margin-bottom: 5px; 
-    transition: 0.2s;
-    font-weight: 600;
-}
-.settings-nav-item:hover { background: #eee; }
-.settings-nav-item.active { background: var(--naver-green); color: white; }
+/* 프로필 모달 특정 */
+.profile-card { background: white; width: 400px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.profile-header { background: var(--naver-green); padding: 30px; color: white; text-align: center; }
+.profile-body { padding: 20px; max-height: 400px; overflow-y: auto; }
+.user-post-link { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; cursor: pointer; display: block; color: #555; text-decoration: none; }
+.user-post-link:hover { background: #f9fafb; color: var(--naver-green); }
 
-.settings-main { flex: 1; padding: 40px; overflow-y: auto; }
-.settings-tab-content { display: none; }
-.settings-tab-content.active { display: block; }
-
-/* 댓글 스타일 명확화 */
-.comment { padding: 15px; border: 1.5px solid #f1f3f5; border-radius: 12px; margin-bottom: 12px; background: white; }
-.reply { margin-left: 35px; background: #f8f9fa; border: 1.5px solid #eaedef; border-left: 4px solid var(--naver-green); }
-
-/* 버튼 및 공통 */
-.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; text-align: center; }
 .btn-green { background: var(--naver-green); color: white; }
-.input-style { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; outline: none; }
-.input-style:focus { border-color: var(--naver-green); }
-
-@media (max-width: 768px) {
-    .sidebar { display: none; }
-    .settings-container { flex-direction: column; height: 80vh; }
-    .settings-nav { width: 100%; height: auto; display: flex; padding: 10px; }
-    .settings-nav-item { margin: 0 5px; font-size: 12px; padding: 8px; flex: 1; text-align: center; }
-}
+.input-style { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; margin-bottom: 10px; }
