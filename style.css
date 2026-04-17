@@ -5,62 +5,110 @@
     --bg-input: #202225;       /* 입력창 배경 */
     --text-white: #ffffff;
     --text-gray: #b9bbbe;
-    --accent-blue: #5865f2;    /* 디스코드 포인트 색상 */
-    --naver-green: #2db400;    /* 네이버 카페 강조색 */
+    --accent-blue: #5865f2;    /* 디스코드 포인트 */
+    --naver-green: #2db400;    /* 네이버 카페 포인트 */
+    --max-width: 720px;        /* PC에서 가장 보기 좋은 너비 */
 }
 
 body {
     margin: 0; padding: 0;
     background-color: var(--bg-main);
     color: var(--text-white);
-    font-family: 'Pretendard', sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
     display: flex; flex-direction: column; align-items: center;
+    line-height: 1.5;
 }
 
-/* 제목 및 상단 영역 */
+/* 상단 헤더 */
 header {
-    width: 100%; max-width: 800px;
-    padding: 40px 0 20px 0;
-    text-align: center;
+    width: 100%;
+    max-width: var(--max-width);
+    padding: 30px 20px 10px 20px;
+    box-sizing: border-box;
+    text-align: left; /* 카페 느낌으로 왼쪽 정렬 */
 }
 
-/* 글쓰기 버튼 (네이버 카페 느낌 강조) */
+header h2 {
+    font-size: 24px;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+/* 글쓰기 버튼 */
 .btn-write {
-    width: 100%; max-width: 800px;
+    width: calc(100% - 40px); /* 여백 고려 */
+    max-width: var(--max-width);
     background-color: var(--accent-blue);
-    color: white; border: none; padding: 16px;
-    border-radius: 8px; font-size: 18px; font-weight: bold;
-    cursor: pointer; transition: 0.2s; margin-bottom: 30px;
+    color: white; border: none; padding: 14px;
+    border-radius: 8px; font-size: 16px; font-weight: bold;
+    cursor: pointer; transition: 0.2s; 
+    margin: 20px 0;
 }
-.btn-write:hover { background-color: #4752c4; transform: translateY(-2px); }
+.btn-write:hover { background-color: #4752c4; transform: translateY(-1px); }
 
-/* 게시판 목록 (네이버 카페 스타일의 정렬) */
+/* 게시판 목록 영역 */
 #board {
-    width: 100%; max-width: 800px;
-    display: flex; flex-direction: column; gap: 12px;
+    width: 100%;
+    max-width: var(--max-width);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0 20px 40px 20px; /* 좌우 여백 */
+    box-sizing: border-box;
 }
 
 /* 게시글 카드 */
 .post {
     background-color: var(--bg-card);
-    padding: 24px; border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    border-left: 5px solid var(--naver-green); /* 네이버 카페 포인트 */
+    padding: 20px; 
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 4px solid var(--naver-green);
+    transition: transform 0.1s;
 }
-.post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.post-nickname { font-weight: bold; font-size: 1.1em; color: var(--text-white); }
-.post-time { font-size: 0.85em; color: var(--text-gray); }
-.post-content { line-height: 1.6; white-space: pre-wrap; color: #dcddde; }
-.post-image { max-width: 100%; border-radius: 8px; margin-top: 15px; border: 1px solid #444; }
 
-/* 글쓰기 페이지 전용 스타일 */
+.post-header {
+    display: flex;
+    justify-content: space-between; /* 닉네임과 시간을 양끝으로 */
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.post-nickname {
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--text-white);
+}
+
+.post-time {
+    font-size: 12px;
+    color: var(--text-gray);
+}
+
+.post-content {
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #dbdee1;
+    word-break: break-all; /* 긴 영문/링크 깨짐 방지 */
+}
+
+.post-image {
+    width: 100%; /* 카드 너비에 맞춤 */
+    max-height: 500px; /* 너무 길어지지 않게 */
+    object-fit: cover; /* 비율 유지하며 채움 */
+    border-radius: 8px;
+    margin-top: 15px;
+    border: 1px solid #444;
+}
+
+/* 글쓰기 전용 레이아웃 (write.html) */
 .write-box {
-    width: 100%; max-width: 600px; background: var(--bg-card);
-    padding: 30px; border-radius: 15px; margin-top: 50px;
+    width: calc(100% - 40px);
+    max-width: 600px;
+    background: var(--bg-card);
+    padding: 25px;
+    border-radius: 15px;
+    margin-top: 40px;
+    box-sizing: border-box;
 }
-.input-field {
-    width: 100%; background: var(--bg-input); border: 1px solid #444;
-    border-radius: 5px; color: white; padding: 12px; margin-bottom: 15px;
-    box-sizing: border-box; outline: none;
-}
-textarea.input-field { height: 300px; resize: none; }
