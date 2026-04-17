@@ -2,63 +2,45 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>커뮤니티</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json"> 
 </head>
 <body>
     <div class="settings-icon" onclick="openSettings()">⚙️</div>
 
-    <div class="cafe-header">
-        <h1 id="mainTitle">🚀 우리들의 비밀 커뮤니티</h1>
+    <header class="cafe-header" style="padding: 20px; text-align: center;">
+        <h1 id="cafeTitle">🚀 로딩 중...</h1>
+    </header>
+
+    <div style="padding: 0 15px 15px; display: flex; justify-content: flex-end;">
+        <button class="btn btn-main" onclick="location.href='/write'">📝 글쓰기</button>
     </div>
 
-    <div class="control-bar">
-        <button class="btn-write" onclick="location.href='/write'">📝 글쓰기</button>
-    </div>
+    <div id="board" style="max-width: 800px; margin: 0 auto; width: 100%;"></div>
 
-    <div id="board"></div>
-
-    <div id="settingsModal" class="modal">
+    <div id="settingsModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
         <div class="modal-content">
-            <div class="modal-sidebar">
-                <div class="menu-item active" onclick="showMenu('user')">👤 내 정보</div>
-                <div class="menu-item admin-only" onclick="showMenu('role')">🛡️ 역할 관리</div>
-                <div class="menu-item admin-only" onclick="showMenu('theme')">🎨 테마 설정</div>
-                <div class="menu-item master-only" onclick="showMenu('danger')">⚠️ 위험 구역</div>
-                <div style="margin-top:auto;" class="menu-item" onclick="closeSettings()">❌ 닫기</div>
+            <div class="modal-sidebar" style="width:200px; background:#1e1f22; display:flex; flex-direction:column; padding:15px; gap:10px;">
+                <div onclick="showMenu('info')" style="cursor:pointer;">🏠 정보</div>
+                <div onclick="showMenu('design')" style="cursor:pointer;">🎨 디자인</div>
+                <div onclick="showMenu('admin')" style="cursor:pointer;">🛡️ 관리</div>
+                <div onclick="closeSettings()" style="margin-top:auto; color:red; cursor:pointer;">❌ 닫기</div>
             </div>
-            
-            <div class="modal-body" id="menu-user">
-                <h2>내 정보</h2>
-                <div id="myStatus">로그인 정보가 없습니다.</div>
-                <p style="font-size:13px; color:#888;">역할에 따라 관리 메뉴가 활성화됩니다.</p>
+            <div class="modal-body" id="menu-info" style="flex:1; padding:30px;">
+                <h2>내 권한 정보</h2>
+                <div id="myRoleInfo">확인 중...</div>
             </div>
-
-            <div class="modal-body" id="menu-role" style="display:none;">
-                <h2>유저 역할 관리</h2>
-                <input id="targetNick" class="input-field" type="text" placeholder="닉네임">
-                <select id="roleSelect" class="input-field">
-                    <option value="멤버">일반 멤버</option>
-                    <option value="점원">☕ 점원</option>
-                    <option value="주인장">👑 주인장</option>
-                </select>
-                <button onclick="applyRole()" class="action-btn">권한 부여</button>
+            <div class="modal-body" id="menu-design" style="flex:1; padding:30px; display:none;">
+                <h2>디자인 커스텀</h2>
+                <label>테마 색상</label>
+                <input type="color" id="themePick" style="width:100%; height:40px;">
+                <button onclick="saveSettings()" class="btn btn-main" style="margin-top:15px;">저장</button>
             </div>
-
-            <div class="modal-body" id="menu-theme" style="display:none;">
-                <h2>테마 설정</h2>
-                <label>카페 이름</label>
-                <input id="newCafeName" class="input-field" type="text" placeholder="카페 이름 입력">
-                <label>포인트 색상</label>
-                <input id="colorPicker" type="color" style="width:100%; height:40px; cursor:pointer;">
-                <button onclick="applyTheme()" class="action-btn">설정 저장</button>
-            </div>
-
-            <div class="modal-body" id="menu-danger" style="display:none;">
-                <h2>초기화 설정</h2>
-                <p>주인장 전용 구역입니다.</p>
-                <button onclick="clearAll()" style="background:#ff4747;" class="action-btn">모든 게시글 삭제</button>
+            <div class="modal-body" id="menu-admin" style="flex:1; padding:30px; display:none;">
+                <h2>전체 삭제</h2>
+                <button onclick="socket.emit('clear_all', myNick)" style="background:red; color:white;" class="btn">모든 글 지우기</button>
             </div>
         </div>
     </div>
@@ -66,79 +48,37 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const board = document.getElementById('board');
         const myNick = localStorage.getItem('userNickname') || "";
-        let myRole = "멤버";
 
         function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-        
-        function showMenu(menu) {
-            document.querySelectorAll('.modal-body').forEach(b => b.style.display = 'none');
-            document.getElementById('menu-' + menu).style.display = 'flex';
-            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-            event.target.classList.add('active');
+        function showMenu(m) {
+            document.querySelectorAll('.modal-body').forEach(b => b.style.display='none');
+            document.getElementById('menu-'+m).style.display='block';
         }
 
-        socket.on('update_config', config => {
-            document.getElementById('mainTitle').innerText = config.cafeName;
-            document.documentElement.style.setProperty('--naver-green', config.themeColor);
+        socket.on('update_config', c => {
+            document.getElementById('cafeTitle').innerText = c.cafeName;
+            document.documentElement.style.setProperty('--naver-green', c.themeColor);
+            document.documentElement.style.setProperty('--bg-main', c.bgColor);
         });
 
-        socket.on('update_role_list', roles => {
-            myRole = roles[myNick.split('#')[0]] || "멤버";
-            document.getElementById('myStatus').innerHTML = `현재 나의 역할: <b>${myRole}</b>`;
-            
-            // 권한에 따른 메뉴 표시 제어
-            document.querySelectorAll('.admin-only').forEach(el => {
-                el.style.opacity = (myRole === '주인장' || myRole === '점원') ? "1" : "0.3";
-                el.style.pointerEvents = (myRole === '주인장' || myRole === '점원') ? "auto" : "none";
-            });
-            document.querySelectorAll('.master-only').forEach(el => {
-                el.style.opacity = (myRole === '주인장') ? "1" : "0.3";
-                el.style.pointerEvents = (myRole === '주인장') ? "auto" : "none";
+        socket.on('load_history', h => {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            h.reverse().forEach(d => {
+                const p = document.createElement('div');
+                p.className = 'post';
+                p.style.cssText = "background:var(--bg-card); margin-bottom:10px; padding:20px; border-radius:12px;";
+                const img = d.image ? `<img src="${d.image}" style="width:100%; border-radius:8px; margin-top:10px;">` : "";
+                p.innerHTML = `<b>${d.nickname}</b> <small style="color:#888;">${d.time}</small><br><div style="margin-top:8px;">${d.content}</div>${img}`;
+                board.appendChild(p);
             });
         });
 
-        function applyRole() {
-            const nick = document.getElementById('targetNick').value;
-            const role = document.getElementById('roleSelect').value;
-            socket.emit('change_role', { adminNick: myNick.split('#')[0], targetNick: nick, newRole: role });
-            alert("변경 요청을 보냈습니다.");
-        }
-
-        function applyTheme() {
-            const name = document.getElementById('newCafeName').value;
-            const color = document.getElementById('colorPicker').value;
-            socket.emit('update_cafe_settings', { adminNick: myNick.split('#')[0], cafeName: name, themeColor: color });
-        }
-
-        function clearAll() {
-            if(confirm("정말 전부 지울까요?")) socket.emit('clear_all_posts', myNick.split('#')[0]);
-        }
-
-        socket.on('load_history', (history) => {
-            board.innerHTML = history.length ? '' : '<p style="color:#888; text-align:center;">첫 글을 기다리고 있어요!</p>';
-            history.forEach(data => renderPost(data));
-        });
-
-        socket.on('show_post', data => renderPost(data));
-
-        function renderPost(data) {
-            const post = document.createElement('div');
-            post.className = 'post' + (data.isNotice ? ' notice-post' : '');
-            const imgHtml = data.image ? `<img src="${data.image}" style="width:100%; border-radius:8px; margin-top:15px;">` : "";
-            const badge = data.role === '주인장' ? '<span class="badge-admin">👑 주인장</span>' : (data.role === '점원' ? '<span class="badge-staff">☕ 점원</span>' : '');
-            
-            post.innerHTML = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <div><b style="${data.role !== '멤버' ? 'color:var(--naver-green)' : ''}">${data.nickname}</b>${badge}</div>
-                    <span style="font-size:12px; color:var(--text-gray);">${data.time}</span>
-                </div>
-                <div style="line-height:1.6;">${data.isNotice ? '<b>[공지]</b> ' : ''}${data.content}</div>
-                ${imgHtml}
-            `;
-            board.prepend(post);
+        function saveSettings() {
+            const color = document.getElementById('themePick').value;
+            socket.emit('update_cafe_settings', { adminNick: myNick, settings: { themeColor: color } });
         }
     </script>
 </body>

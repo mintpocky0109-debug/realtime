@@ -2,33 +2,28 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>글 쓰기</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div style="width:100%; max-width:900px; padding:40px 20px;">
-        <div class="write-box" style="background:var(--bg-card); padding:40px; border-radius:12px; display:flex; flex-direction:column; gap:20px;">
-            <h2>📝 새 게시물</h2>
-            <input id="nickname" class="input-field" type="text" placeholder="닉네임 (주인장 인증: 이름#master123)">
-            
-            <div onclick="document.getElementById('imageInput').click()" style="border: 2px dashed #4e5058; padding: 20px; border-radius: 8px; text-align:center; cursor:pointer; background:var(--bg-input);">
-                <span style="font-size:24px;">📷</span> <br> <b>사진 추가</b>
-                <div id="preview" style="margin-top:10px;"></div>
-            </div>
-            <input type="file" id="imageInput" accept="image/*" style="display:none;">
+<body style="background:var(--bg-card);">
+    <div class="write-layout">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button onclick="location.href='/'" style="background:none; border:none; color:white; font-size:20px;">✕</button>
+            <button onclick="send()" class="btn btn-main">등록</button>
+        </div>
 
-            <textarea id="content" class="input-field" style="height:350px;" placeholder="내용을 입력하세요..."></textarea>
-            
-            <div id="noticeCheck" style="display:none; align-items:center; gap:8px;">
-                <input type="checkbox" id="isNotice"> <label for="isNotice" style="color:var(--notice-red); font-weight:bold;">중요 공지</label>
-            </div>
+        <input id="nickname" type="text" placeholder="닉네임" style="background:none; border:none; border-bottom:1px solid #444; color:white; padding:10px; font-size:18px; outline:none;">
 
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:6px; cursor:pointer; background:#4e5058; color:white; border:none;">취소</button>
-                <button onclick="send()" style="padding:15px 50px; border-radius:6px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">업로드</button>
+        <div class="input-area">
+            <textarea id="content" placeholder="무슨 생각을 하고 계신가요? (Ctrl+Enter로 등록)"></textarea>
+            <div class="image-preview-slot" id="preview" onclick="document.getElementById('imgIn').click()">
+                <span id="plus">+</span>
             </div>
         </div>
+        
+        <input type="file" id="imgIn" accept="image/*" style="display:none;">
+        <p style="font-size:12px; color:#888; text-align:center;">엔터는 줄바꿈, 컨트롤+엔터는 바로 등록됩니다.</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -36,39 +31,33 @@
         const socket = io();
         let b64 = "";
 
-        window.onload = () => {
-            const saved = localStorage.getItem('userNickname') || "";
-            document.getElementById('nickname').value = saved;
-            socket.on('update_role_list', roles => {
-                const role = roles[saved.split('#')[0]];
-                if(role === '주인장' || role === '점원') document.getElementById('noticeCheck').style.display = 'flex';
-            });
-            socket.on('update_config', config => {
-                document.documentElement.style.setProperty('--naver-green', config.themeColor);
-            });
-        };
+        document.getElementById('nickname').value = localStorage.getItem('userNickname') || "";
 
-        document.getElementById('imageInput').onchange = (e) => {
-            const file = e.target.files[0];
-            if(file){
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    b64 = ev.target.result;
-                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-height:100px; border-radius:5px;">`;
-                };
-                reader.readAsDataURL(file);
+        // 엔터키 처리
+        document.getElementById('content').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                send();
             }
+        });
+
+        document.getElementById('imgIn').onchange = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                b64 = ev.target.result;
+                document.getElementById('preview').innerHTML = `<img src="${b64}">`;
+            };
+            reader.readAsDataURL(file);
         };
 
         function send() {
-            const nick = document.getElementById('nickname').value;
-            const msg = document.getElementById('content').value;
-            if(!nick || !msg) return alert("입력 완료!");
-            if(confirm("업로드 할까요?")) {
-                localStorage.setItem('userNickname', nick);
-                socket.emit('new_post', { nickname: nick, content: msg, image: b64, isNotice: document.getElementById('isNotice').checked });
-                location.href = '/';
-            }
+            const n = document.getElementById('nickname').value;
+            const c = document.getElementById('content').value;
+            if(!n || !c) return alert("내용을 입력해주세요.");
+            localStorage.setItem('userNickname', n);
+            socket.emit('new_post', { nickname: n, content: c, image: b64 });
+            location.href = '/';
         }
     </script>
 </body>
