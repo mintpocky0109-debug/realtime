@@ -32,6 +32,15 @@
         const input = document.getElementById('content');
         const nickInput = document.getElementById('nickname');
 
+        // [추가] 서버에 연결되자마자 기존 메시지들을 불러옵니다.
+        socket.on('load_history', (history) => {
+            board.innerHTML = ''; // 화면 초기화
+            // 과거 내역은 시간순이므로 하나씩 화면에 표시
+            history.forEach(data => {
+                renderPost(data);
+            });
+        });
+
         // 전송 버튼 누를 때 실행
         function send() {
             const nick = nickInput.value || '익명';
@@ -44,8 +53,13 @@
             }
         }
 
-        // 서버에서 메시지를 받았을 때 화면에 추가
+        // 서버에서 새 메시지를 받았을 때 실행
         socket.on('show_post', (data) => {
+            renderPost(data);
+        });
+
+        // [추가] 메시지를 화면에 그리는 기능을 별도 함수로 만들었습니다.
+        function renderPost(data) {
             const post = document.createElement('div');
             post.className = 'post';
             post.innerHTML = `
@@ -54,7 +68,7 @@
                 ${data.content}
             `;
             board.prepend(post); // 최신글이 위로 오게 함
-        });
+        }
     </script>
 </body>
 </html>
