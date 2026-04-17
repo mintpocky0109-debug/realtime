@@ -18,8 +18,8 @@ const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
-// ⭐ 주인장 아이디 설정 (본인이 가입할 아이디로 바꾸세요)
-const ADMIN_ID = "Mintpocky"; 
+// ⭐ 이 부분을 본인이 사용할 아이디로 정확히 수정하세요! (예: "myid123")
+const ADMIN_ID = "Mint_pocky"; 
 
 const loadJson = (file, defaultVal) => {
     try {
@@ -37,18 +37,19 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     staffList: []
 });
 
-// 라우팅: /write 접속 시 write.html 제공
 app.get('/write', (req, res) => {
     res.sendFile(path.join(__dirname, 'write.html'));
 });
 
-// 회원가입: 중복 체크 및 어드민 고정
+// 회원가입
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
     
+    // 가입할 때 아이디가 ADMIN_ID면 주인장으로 저장
     let role = (userId === ADMIN_ID) ? "주인장" : "멤버";
-    users.push({ userId, password, nickname, role });
+    const newUser = { userId, password, nickname, role };
+    users.push(newUser);
     
     if(role === "주인장") {
         cafeConfig.ownerNick = nickname;
@@ -58,13 +59,14 @@ app.post('/api/signup', (req, res) => {
     res.json({ success: true });
 });
 
-// 로그인
+// 로그인 (여기서 한 번 더 강제로 주인장 권한 부여)
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
-        const role = (user.userId === ADMIN_ID) ? "주인장" : user.role;
-        res.json({ success: true, user: { nickname: user.nickname, role: role } });
+        // ⭐ 핵심: 데이터베이스에 상관없이 아이디가 일치하면 무조건 주인장으로 로그인됨
+        let finalRole = (user.userId === ADMIN_ID) ? "주인장" : user.role;
+        res.json({ success: true, user: { nickname: user.nickname, role: finalRole } });
     } else {
         res.json({ success: false, msg: "아이디 또는 비밀번호가 틀렸습니다." });
     }
@@ -75,9 +77,15 @@ io.on('connection', (socket) => {
 
     socket.on('new_post', (data) => {
         const user = users.find(u => u.nickname === data.nickname);
+        // 글 쓸 때도 아이디를 다시 체크해서 역할 부여
+        let currentRole = "멤버";
+        if (user) {
+            currentRole = (user.userId === ADMIN_ID) ? "주인장" : user.role;
+        }
+        
         const newPost = { 
             id: Date.now(), board: data.board, nickname: data.nickname, 
-            role: user ? user.role : "멤버", content: data.content, 
+            role: currentRole, content: data.content, 
             image: data.image, time: new Date().toLocaleString(), 
             likedBy: [], comments: [] 
         };
@@ -86,27 +94,20 @@ io.on('connection', (socket) => {
         io.emit('update_posts', posts);
     });
 
-    // 댓글 및 답글 통합 로직
     socket.on('new_comment', (data) => {
         const post = posts.find(p => p.id === data.postId);
         if(post) {
             const commentObj = {
-                id: Date.now(),
-                nickname: data.nickname,
-                content: data.content,
-                time: new Date().toLocaleTimeString(),
-                replies: [] // 답글을 담을 배열
+                id: Date.now(), nickname: data.nickname,
+                content: data.content, time: new Date().toLocaleTimeString(),
+                replies: []
             };
-
             if (data.parentId) {
-                // 답글인 경우
-                const parentComment = post.comments.find(c => c.id === data.parentId);
-                if (parentComment) parentComment.replies.push(commentObj);
+                const parent = post.comments.find(c => c.id === data.parentId);
+                if (parent) parent.replies.push(commentObj);
             } else {
-                // 일반 댓글인 경우
                 post.comments.push(commentObj);
             }
-            
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
             io.emit('update_posts', posts);
         }
