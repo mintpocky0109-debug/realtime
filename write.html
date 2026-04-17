@@ -9,21 +9,22 @@
 <body>
     <div class="write-container">
         <div class="write-box">
-            <div style="font-size: 22px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 15px;">카페 글쓰기</div>
+            <h2 style="margin:0 0 10px 0;">📝 게시글 작성</h2>
+            <p style="font-size:14px; color:var(--text-gray); margin-bottom:20px;">자유롭게 여러분의 소식을 공유해 보세요.</p>
             
-            <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요 (인증은 이름#master123)">
+            <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요 (주인장 인증은 이름#master123)">
             
-            <div>
-                <label style="display: inline-block; padding: 10px 18px; background: #4f545c; border-radius: 4px; cursor: pointer; font-size: 14px;" for="imageInput">📷 사진 첨부</label>
+            <div style="margin: 10px 0;">
+                <label class="file-label" for="imageInput">📷 사진 업로드</label>
                 <input type="file" id="imageInput" accept="image/*" style="display:none;">
-                <div id="preview" style="margin-top:10px;"></div>
+                <div id="preview" style="margin-top:15px;"></div>
             </div>
 
-            <textarea id="content" class="input-field" placeholder="내용을 작성하세요... (Ctrl + Enter로 등록)"></textarea>
+            <textarea id="content" class="input-field" placeholder="내용을 마음껏 적어보세요... (Ctrl + Enter로 바로 등록)"></textarea>
             
-            <div style="display:flex; gap:10px; justify-content: flex-end;">
-                <button onclick="location.href='/'" style="padding:12px 25px; border-radius:4px; cursor:pointer; background:#4f545c; color:white; border:none;">취소</button>
-                <button id="sendBtn" onclick="send()" style="padding:12px 40px; border-radius:4px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">등록하기</button>
+            <div style="display:flex; gap:12px; justify-content: flex-end; margin-top:10px;">
+                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:6px; cursor:pointer; background:#4f545c; color:white; border:none; font-weight:bold;">취소</button>
+                <button onclick="send()" style="padding:15px 50px; border-radius:6px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold; font-size:16px;">등록하기</button>
             </div>
         </div>
     </div>
@@ -38,11 +39,9 @@
             if (savedNick) document.getElementById('nickname').value = savedNick;
         };
 
-        document.getElementById('content').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                send();
-            }
+        // 단축키 전송 기능
+        document.getElementById('content').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); send(); }
         });
 
         document.getElementById('imageInput').onchange = (e) => {
@@ -51,7 +50,7 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     b64 = ev.target.result;
-                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:200px; border-radius:5px; border:1px solid #444;">`;
+                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid #444;">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -60,9 +59,9 @@
         function send() {
             const nick = document.getElementById('nickname').value || '익명';
             const msg = document.getElementById('content').value;
-            if(!msg && !b64) return alert("내용을 입력해주세요.");
+            if(!msg && !b64) return alert("내용을 작성해주세요!");
 
-            if (confirm("게시글을 업로드 하시겠습니까?")) {
+            if (confirm("이 게시글을 등록하시겠습니까?")) {
                 localStorage.setItem('userNickname', nick);
                 socket.emit('new_post', { nickname: nick, content: msg, image: b64 });
                 location.href = '/';

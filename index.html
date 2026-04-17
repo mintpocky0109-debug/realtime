@@ -14,7 +14,7 @@
     </div>
 
     <div class="notice-banner">
-        <strong>📢 공지:</strong> 주인장과 점원의 안내에 따라 즐거운 커뮤니티를 만들어주세요.
+        <strong>📢 공지:</strong> 즐거운 커뮤니티를 위해 서로를 배려해 주세요.
     </div>
 
     <div class="control-bar">
@@ -25,18 +25,21 @@
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <h3>🛠️ 카페 관리 설정</h3>
-            <p style="font-size: 12px; color: #888;">특정 유저에게 역할을 부여합니다.</p>
+            <h3>🛠️ 유저 역할 설정</h3>
             <input id="targetNick" class="input-field" type="text" placeholder="대상 닉네임">
             <select id="roleSelect" class="input-field">
-                <option value="멤버">멤버 (일반)</option>
-                <option value="점원">점원 (부관리자)</option>
-                <option value="주인장">주인장 (관리자)</option>
+                <option value="멤버">멤버</option>
+                <option value="점원">☕ 점원</option>
+                <option value="주인장">👑 주인장</option>
             </select>
-            <button onclick="applyRole()" style="background:var(--naver-green); color:white; border:none; padding:10px; width:100%; border-radius:4px; font-weight:bold; cursor:pointer;">설정 적용</button>
-            <button onclick="toggleSettings()" style="background:#444; color:white; border:none; padding:10px; width:100%; border-radius:4px; margin-top:5px; cursor:pointer;">닫기</button>
+            <button onclick="applyRole()" style="background:var(--naver-green); color:white; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer;">적용하기</button>
+            <button onclick="toggleSettings()" style="background:#555; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">닫기</button>
         </div>
     </div>
+
+    <footer>
+        <p>© 2026 우리 커뮤니티. All rights reserved.</p>
+    </footer>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -45,7 +48,7 @@
 
         function toggleSettings() {
             const modal = document.getElementById('settingsModal');
-            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
         }
 
         function applyRole() {
@@ -53,7 +56,7 @@
             const role = document.getElementById('roleSelect').value;
             if(!nick) return alert("닉네임을 입력하세요");
             socket.emit('change_role', { targetNick: nick, newRole: role });
-            alert(nick + " 님이 " + role + "(으)로 설정되었습니다.");
+            alert(nick + "님 설정 완료!");
             toggleSettings();
         }
 
@@ -69,24 +72,15 @@
             post.className = 'post';
             const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
             
-            let roleBadge = "";
-            let nickColor = "";
-
-            if(data.role === '주인장') {
-                roleBadge = `<span class="badge-admin">👑 주인장</span>`;
-                nickColor = "color: #ffcc00;";
-            } else if(data.role === '점원') {
-                roleBadge = `<span class="badge-staff">☕ 점원</span>`;
-                nickColor = "color: #00ffcc;";
-            }
+            let badge = "";
+            let color = "";
+            if(data.role === '주인장') { badge = `<span class="badge-admin">👑 주인장</span>`; color = "color: #ffcc00;"; }
+            else if(data.role === '점원') { badge = `<span class="badge-staff">☕ 점원</span>`; color = "color: #00ffcc;"; }
 
             post.innerHTML = `
                 <div class="post-header">
-                    <div>
-                        <span class="post-nickname" style="${nickColor}">${data.nickname}</span>
-                        ${roleBadge}
-                    </div>
-                    <span class="post-time">${data.time}</span>
+                    <div><span class="post-nickname" style="${color}">${data.nickname}</span>${badge}</div>
+                    <span style="font-size:12px; color:#888;">${data.time}</span>
                 </div>
                 <div class="post-content">${data.content}</div>
                 ${imgHtml}
