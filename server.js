@@ -15,6 +15,8 @@ const io = new Server(server, {
 // [설정] 서버가 큰 데이터(Base64 이미지)를 처리할 수 있도록 설정
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// server.js 상단 (app 설정 부분)
+app.use(express.static(path.join(__dirname))); // 현재 폴더의 모든 파일(CSS 등)을 웹에서 쓸 수 있게 허용
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 

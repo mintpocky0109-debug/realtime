@@ -2,42 +2,44 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>실시간 게시판</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; }
-        h2 { color: #333; }
-        #board { width: 100%; max-width: 600px; border: 1px solid #ccc; height: 600px; overflow-y: auto; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .post { border-bottom: 1px solid #eee; padding: 12px 0; word-break: break-all; }
-        .post img { max-width: 100%; border-radius: 8px; margin-top: 10px; display: block; }
-        .go-write { width: 100%; max-width: 600px; padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-bottom: 20px; text-align: center; }
-        .go-write:hover { background-color: #0056b3; }
-    </style>
+    <title>실시간 커뮤니티</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>🚀 실시간 게시판</h2>
-    <button class="go-write" onclick="location.href='/write'">📝 새 글 작성하러 가기</button>
+    <header>
+        <h2>🚀 실시간 커뮤니티</h2>
+    </header>
+
+    <button class="btn-write" onclick="location.href='/write'">+ 새 게시글 작성</button>
+
     <div id="board"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const board = document.getElementById('board');
+
         socket.on('load_history', (history) => {
             board.innerHTML = '';
             history.forEach(data => renderPost(data));
         });
+
         socket.on('show_post', (data) => {
             renderPost(data);
         });
+
         function renderPost(data) {
             const post = document.createElement('div');
             post.className = 'post';
-            const imgTag = data.image ? `<img src="${data.image}">` : "";
+            const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
+            
             post.innerHTML = `
-                <strong style="color: #007bff;">${data.nickname}</strong> 
-                <span style="font-size: 0.8em; color: #999;">(${data.time})</span><br>
-                <div style="margin-top: 8px; white-space: pre-wrap;">${data.content}</div>
-                ${imgTag}
+                <div class="post-header">
+                    <span class="post-nickname">${data.nickname}</span>
+                    <span class="post-time">${data.time}</span>
+                </div>
+                <div class="post-content">${data.content}</div>
+                ${imgHtml}
             `;
             board.prepend(post);
         }
