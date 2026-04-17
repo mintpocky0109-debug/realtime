@@ -6,37 +6,32 @@
     <title>커뮤니티 카페</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* 추가 스타일 */
-        .profile-small { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; background: #eee; border: 1px solid #ddd; }
-        .settings-icon { cursor: pointer; font-size: 26px; margin-top: 20px; color: #888; transition: 0.3s; }
-        .settings-icon:hover { color: #333; transform: rotate(90deg); }
-        
-        /* 설정 탭 스타일 */
+        /* 기존 디자인 복구 및 탭 스타일 추가 */
         .settings-tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 20px; }
-        .s-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-weight: bold; }
+        .s-tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; color: #888; font-weight: bold; font-size: 14px; }
         .s-tab.active { color: #2db400; border-bottom: 2px solid #2db400; }
         .s-content { display: none; }
         .s-content.active { display: block; }
+        
+        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #888; font-size: 12px; overflow: hidden; }
+        .prof-preview { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-top: -40px; margin-left: 20px; object-fit: cover; background: #fff; cursor: pointer; position: relative; z-index: 10; }
+        
+        .user-manage-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f5f5f5; }
+        .user-manage-item img { width: 32px; height: 32px; border-radius: 50%; margin-right: 12px; }
+        .staff-btn { margin-left: auto; padding: 5px 10px; border-radius: 5px; cursor: pointer; border: 1px solid #ddd; font-size: 11px; transition: 0.2s; }
+        .staff-btn.is-staff { background: #ffa502; color: white; border: none; }
+        
+        #toast { position: fixed; bottom: -60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 12px 25px; border-radius: 30px; font-size: 14px; transition: 0.4s; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        #toast.show { bottom: 40px; }
 
-        /* 유저 리스트 스타일 */
-        .user-manage-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f9f9f9; }
-        .user-manage-item img { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; }
-        .staff-toggle-btn { margin-left: auto; padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; border: 1px solid #ddd; }
-        .staff-toggle-btn.is-staff { background: #ffa502; color: white; border: none; }
-
-        /* 토스트 알림 */
-        #toast { fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 9999; pointer-events: none; }
-        #toast.show { opacity: 1; bottom: 40px; }
-
+        .profile-small { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; background: #eee; border: 1px solid #ddd; }
         .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
         .badge-owner { background: #ff4757; color: white; }
         .badge-staff { background: #ffa502; color: white; }
-        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow:hidden; }
-        .prof-preview { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-top: -40px; margin-left: 20px; object-fit: cover; background: #fff; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="toast">저장되었습니다.</div>
+    <div id="toast">메시지</div>
 
     <header class="header">
         <h1 id="cafeName" style="cursor:pointer;" onclick="location.reload()">☕ 카페</h1>
@@ -47,30 +42,37 @@
         <nav class="sidebar">
             <div id="boardList"></div>
             <div id="sideExtra" style="margin-top:20px; display:none;">
-                <button class="btn btn-green" style="width:100%;" onclick="location.href='/write'">📝 글쓰기</button>
-                <div class="settings-icon" onclick="openSettings()">⚙️</div>
+                <button class="btn btn-green" style="width:100%; margin-bottom:10px;" onclick="location.href='/write'">📝 글쓰기</button>
+                <div style="text-align:center; cursor:pointer; color:#888; font-size:24px;" onclick="openSettings()">⚙️</div>
             </div>
         </nav>
+
         <section class="content">
-            <div id="listView" style="padding:30px;"><h2 id="currentBoardTitle">전체보기</h2><div id="postList"></div></div>
+            <div id="listView" style="padding:30px;">
+                <h2 id="currentBoardTitle" style="margin-bottom:20px;">전체보기</h2>
+                <div id="postList"></div>
+            </div>
             <div id="postDetailView" style="display:none; padding:40px; background:white;">
                 <div style="cursor:pointer; color:#888; margin-bottom:20px;" onclick="closePost()">← 목록으로</div>
                 <div id="postDetailBody"></div>
-                <div id="commentList"></div>
-                <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
-                    <input id="commentInput" type="text" placeholder="댓글 입력..." class="input-style" style="margin:0;">
-                    <button class="btn btn-green" onclick="submitComment()">등록</button>
+                <div class="comment-section" style="margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
+                    <h4 id="commentCountTitle">댓글</h4>
+                    <div id="commentList"></div>
+                    <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
+                        <input id="commentInput" type="text" placeholder="댓글 입력..." class="input-style" style="margin:0;">
+                        <button class="btn btn-green" onclick="submitComment()">등록</button>
+                    </div>
                 </div>
             </div>
         </section>
     </div>
 
     <div id="settingsModal" class="modal">
-        <div style="background:white; width:480px; border-radius:20px; padding:25px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+        <div style="background:white; width:480px; border-radius:20px; padding:25px; max-height:85vh; overflow:hidden; display:flex; flex-direction:column;">
             <div class="settings-tabs">
-                <div class="s-tab active" onclick="changeSTab(0, this)">내 프로필</div>
-                <div id="adminTab" class="s-tab" style="display:none;" onclick="changeSTab(1, this)">카페 설정</div>
-                <div id="staffTab" class="s-tab" style="display:none;" onclick="changeSTab(2, this)">유저/점원 관리</div>
+                <div class="s-tab active" onclick="changeTab(0, this)">내 프로필</div>
+                <div id="adminTab" class="s-tab" style="display:none;" onclick="changeTab(1, this)">카페 설정</div>
+                <div id="staffTab" class="s-tab" style="display:none;" onclick="changeTab(2, this)">유저 관리</div>
             </div>
 
             <div style="flex:1; overflow-y:auto; padding-right:5px;">
@@ -81,21 +83,20 @@
                     <input type="file" id="profFile" style="display:none;" accept="image/*" onchange="previewImg(this, 'setProfPreview')">
                     <input type="text" id="setNickInput" placeholder="닉네임" class="input-style" style="margin-top:15px;">
                     <textarea id="setDescInput" placeholder="자기소개" class="input-style" style="height:60px;"></textarea>
-                    <button class="btn btn-green" style="width:100%;" onclick="saveMyProfile()">프로필 저장</button>
+                    <button class="btn btn-green" style="width:100%;" onclick="saveProfile()">설정 저장</button>
                 </div>
 
                 <div id="s-content-1" class="s-content">
                     <label style="font-size:12px; color:#888;">카페 이름</label>
                     <input type="text" id="setCafeNameInput" class="input-style">
-                    <button class="btn" style="width:100%; background:orange; color:white;" onclick="saveCafeConfig()">카페 정보 저장</button>
+                    <button class="btn" style="width:100%; background:orange; color:white;" onclick="saveCafeName()">카페 이름 저장</button>
                 </div>
 
                 <div id="s-content-2" class="s-content">
-                    <p style="font-size:12px; color:#888; margin-bottom:10px;">가입한 유저 목록 (클릭하여 점원 임명/해제)</p>
+                    <p style="font-size:12px; color:#999; margin-bottom:10px;">가입한 유저들을 점원으로 임명하거나 해제할 수 있습니다.</p>
                     <div id="userManageList"></div>
                 </div>
             </div>
-            
             <button class="btn" style="width:100%; margin-top:20px; background:#f5f5f5;" onclick="closeSettings()">닫기</button>
         </div>
     </div>
@@ -103,8 +104,8 @@
     <div id="loginModal" class="modal">
         <div style="background:white; width:300px; border-radius:20px; padding:25px;">
             <div style="display:flex; margin-bottom:15px; border-bottom:1px solid #eee;">
-                <div id="tabL" style="flex:1; cursor:pointer; padding-bottom:10px; color:#2db400; font-weight:bold;" onclick="toggleAuthTab('login')">로그인</div>
-                <div id="tabS" style="flex:1; cursor:pointer; padding-bottom:10px; color:#aaa;" onclick="toggleAuthTab('signup')">회원가입</div>
+                <div id="tabL" style="flex:1; cursor:pointer; padding-bottom:10px; color:#2db400; font-weight:bold; text-align:center;" onclick="toggleAuthTab('login')">로그인</div>
+                <div id="tabS" style="flex:1; cursor:pointer; padding-bottom:10px; color:#aaa; text-align:center;" onclick="toggleAuthTab('signup')">회원가입</div>
             </div>
             <input type="text" id="authId" placeholder="아이디" class="input-style">
             <input type="password" id="authPw" placeholder="비밀번호" class="input-style">
@@ -129,13 +130,11 @@
         });
 
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(openedPostId) renderPostDetail(openedPostId); });
-        socket.on('update_config', c => { cafeConfig = c; showToast("카페 설정이 실시간으로 업데이트되었습니다."); renderAll(); });
+        socket.on('update_config', c => { cafeConfig = c; renderAll(); });
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
+        function showToast(m) {
+            const t = document.getElementById('toast'); t.innerText = m; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
         }
 
         function renderAll() {
@@ -151,8 +150,8 @@
             if(currentUser) {
                 const bClass = currentUser.role === '주인장' ? 'badge-owner' : (currentUser.role === '점원' ? 'badge-staff' : 'badge-member');
                 h.innerHTML = `<img src="${currentUser.profileImg || ''}" class="profile-small" onerror="this.src='https://via.placeholder.com/32'">
-                    <span style="font-weight:bold; cursor:pointer;">${currentUser.nickname}</span><span class="badge ${bClass}">${currentUser.role}</span>
-                    <button class="btn" style="margin-left:10px;" onclick="logout()">로그아웃</button>`;
+                    <span style="font-weight:bold; margin-right:5px;">${currentUser.nickname}</span><span class="badge ${bClass}">${currentUser.role}</span>
+                    <button class="btn" style="margin-left:10px; font-size:12px; padding:5px 10px;" onclick="logout()">로그아웃</button>`;
                 document.getElementById('sideExtra').style.display = 'block';
                 document.getElementById('commentInputArea').style.display = 'flex';
             } else {
@@ -161,80 +160,72 @@
             }
         }
 
-        function changeSTab(idx, el) {
+        function renderPosts() {
+            const list = document.getElementById('postList');
+            const title = document.getElementById('currentBoardTitle').innerText;
+            const filtered = (title === "전체보기") ? allPosts : allPosts.filter(p => p.board === title);
+            list.innerHTML = filtered.slice().reverse().map(p => `
+                <div class="post-list-item" onclick="openPost(${p.id})">
+                    <div style="font-weight:bold; font-size:15px;">${p.content.substring(0,40)}</div>
+                    <div style="font-size:12px; color:#888; margin-top:8px; display:flex; align-items:center;">
+                        <img src="${p.profileImg || ''}" class="profile-small" style="width:20px; height:20px;" onerror="this.src='https://via.placeholder.com/20'">
+                        ${p.nickname} · ${p.time.split(' ')[1]} · 댓글 ${p.comments.length}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openPost(id) {
+            openedPostId = id;
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('postDetailView').style.display = 'block';
+            renderPostDetail(id);
+            window.scrollTo(0,0);
+        }
+
+        function renderPostDetail(id) {
+            const post = allPosts.find(p => p.id === id);
+            if(!post) return;
+            const bClass = post.role === '주인장' ? 'badge-owner' : (post.role === '점원' ? 'badge-staff' : 'badge-member');
+            
+            document.getElementById('postDetailBody').innerHTML = `
+                <h2 style="margin-bottom:15px;">${post.content.substring(0,30)}</h2>
+                <div style="margin-bottom:30px; display:flex; align-items:center; border-bottom:1px solid #f5f5f5; padding-bottom:15px;">
+                    <img src="${post.profileImg || ''}" class="profile-small" style="width:40px; height:40px;" onerror="this.src='https://via.placeholder.com/40'">
+                    <div><strong>${post.nickname}</strong> <span class="badge ${bClass}">${post.role}</span><br><small style="color:#aaa;">${post.time}</small></div>
+                </div>
+                <div style="font-size:16px; line-height:1.6; white-space:pre-wrap; min-height:100px;">${post.content}</div>
+                ${post.image ? `<img src="${post.image}" style="max-width:100%; margin-top:20px; border-radius:10px; border:1px solid #eee;">` : ""}
+                <div style="text-align:center; margin-top:40px;"><button class="btn" style="border:1px solid #ddd; background:#fff;" onclick="toggleLike(${post.id})">☕ 커피 ${post.likedBy.length}</button></div>
+            `;
+
+            let html = "";
+            post.comments.forEach(com => {
+                html += `<div class="comment-item">
+                    <div style="display:flex; align-items:center; margin-bottom:8px;">
+                        <img src="${com.profileImg || ''}" class="profile-small" style="width:24px; height:24px;" onerror="this.src='https://via.placeholder.com/24'">
+                        <strong>${com.nickname}</strong> <small style="color:#ccc; margin-left:10px;">${com.time}</small>
+                    </div>
+                    <div style="margin-left:32px;">${com.content}</div>
+                    <span class="reply-btn" onclick="toggleRep(${com.id})">답글</span>
+                    <div id="repBox-${com.id}" style="display:none; margin-top:10px; gap:5px; margin-left:32px;">
+                        <input type="text" id="repIn-${com.id}" class="input-style" placeholder="답글..." style="margin:0; flex:1;">
+                        <button class="btn btn-green" style="padding:5px 15px;" onclick="submitComment(${com.id})">등록</button>
+                    </div>
+                </div>`;
+                if(com.replies) com.replies.forEach(rep => {
+                    html += `<div class="reply-item"><strong>${rep.nickname}</strong>: ${rep.content}</div>`;
+                });
+            });
+            document.getElementById('commentList').innerHTML = html || '<p style="text-align:center; color:#eee; padding:20px;">첫 댓글을 남겨보세요.</p>';
+            document.getElementById('commentCountTitle').innerText = `댓글 ${post.comments.length}`;
+        }
+
+        // 탭 및 사진 관련 로직
+        function changeTab(idx, el) {
             document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.s-content').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            document.getElementById(`s-content-${idx}`).classList.add('active');
-        }
-
-        function openSettings() {
-            if(!currentUser) return;
-            // 초기 탭 설정
-            changeSTab(0, document.querySelectorAll('.s-tab')[0]);
-            
-            const bgP = document.getElementById('setBgPreview');
-            bgP.style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
-            bgP.innerText = currentUser.bgImg ? '' : '배경 사진 선택';
-            document.getElementById('setProfPreview').src = currentUser.profileImg || 'https://via.placeholder.com/80';
-            document.getElementById('setNickInput').value = currentUser.nickname;
-            document.getElementById('setDescInput').value = currentUser.profileDesc || "";
-
-            if(currentUser.role === '주인장' || currentUser.role === '점원') {
-                document.getElementById('adminTab').style.display = 'block';
-                document.getElementById('setCafeNameInput').value = cafeConfig.cafeName;
-                if(currentUser.role === '주인장') {
-                    document.getElementById('staffTab').style.display = 'block';
-                    renderUserManageList();
-                }
-            }
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
-        function renderUserManageList() {
-            const list = document.getElementById('userManageList');
-            // 본인(주인장) 제외 유저 리스트
-            const others = allUsers.filter(u => u.userId !== currentUser.userId);
-            list.innerHTML = others.map(u => {
-                const isStaff = cafeConfig.staffList.includes(u.nickname);
-                return `
-                    <div class="user-manage-item">
-                        <img src="${u.profileImg || 'https://via.placeholder.com/30'}">
-                        <span style="font-size:14px;">${u.nickname}</span>
-                        <button class="staff-toggle-btn ${isStaff?'is-staff':''}" onclick="toggleStaff('${u.nickname}')">
-                            ${isStaff ? '점원 해제' : '점원 임명'}
-                        </button>
-                    </div>
-                `;
-            }).join('') || '<p style="text-align:center; padding:20px; color:#ccc;">다른 유저가 없습니다.</p>';
-        }
-
-        function toggleStaff(nick) {
-            let newList = [...cafeConfig.staffList];
-            if(newList.includes(nick)) newList = newList.filter(n => n !== nick);
-            else newList.push(nick);
-            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { staffList: newList } });
-            showToast(`${nick}님의 권한이 변경되었습니다.`);
-            // 실시간 반영을 위해 리스트 재랜더링 (서버 응답 전 로컬 업데이트)
-            cafeConfig.staffList = newList;
-            renderUserManageList();
-        }
-
-        async function saveMyProfile() {
-            const bgData = document.getElementById('setBgPreview').style.backgroundImage.slice(5, -2).replace(/"/g, "");
-            const profData = document.getElementById('setProfPreview').src;
-            const upd = { 
-                userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, 
-                profileImg: profData, bgImg: bgData, profileDesc: document.getElementById('setDescInput').value 
-            };
-            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
-            if((await res.json()).success) { showToast("프로필이 저장되었습니다."); setTimeout(() => location.reload(), 1000); }
-        }
-
-        function saveCafeConfig() {
-            const newName = document.getElementById('setCafeNameInput').value;
-            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { cafeName: newName } });
-            showToast("카페 정보가 저장되었습니다.");
+            el.classList.add('active'); document.getElementById(`s-content-${idx}`).classList.add('active');
         }
 
         function previewImg(input, tid) {
@@ -250,35 +241,85 @@
             }
         }
 
-        function renderPosts() {
-            const list = document.getElementById('postList');
-            const title = document.getElementById('currentBoardTitle').innerText;
-            const filtered = (title === "전체보기") ? allPosts : allPosts.filter(p => p.board === title);
-            list.innerHTML = filtered.slice().reverse().map(p => `
-                <div class="post-list-item" onclick="openPost(${p.id})">
-                    <div style="font-weight:bold;">${p.content.substring(0,35)}</div>
-                    <div style="font-size:12px; color:#888; margin-top:8px;">
-                        <img src="${p.profileImg || ''}" class="profile-small" onerror="this.src='https://via.placeholder.com/32'">
-                        ${p.nickname} · 댓글 ${p.comments.length}
-                    </div>
-                </div>
-            `).join('');
+        async function saveProfile() {
+            const bgData = document.getElementById('setBgPreview').style.backgroundImage.slice(5, -2).replace(/"/g, "");
+            const profData = document.getElementById('setProfPreview').src;
+            const upd = { userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, profileImg: profData, bgImg: bgData, profileDesc: document.getElementById('setDescInput').value };
+            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
+            if((await res.json()).success) { showToast("프로필이 저장되었습니다."); setTimeout(()=>location.reload(), 1000); }
         }
 
-        // 기존 필수 기능들
-        function openPost(id) { openedPostId = id; document.getElementById('listView').style.display = 'none'; document.getElementById('postDetailView').style.display = 'block'; renderPostDetail(id); }
+        function openSettings() {
+            if(!currentUser) return;
+            changeTab(0, document.querySelectorAll('.s-tab')[0]);
+            const bgP = document.getElementById('setBgPreview');
+            bgP.style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
+            bgP.innerText = currentUser.bgImg ? '' : '배경 사진 선택';
+            document.getElementById('setProfPreview').src = currentUser.profileImg || 'https://via.placeholder.com/80';
+            document.getElementById('setNickInput').value = currentUser.nickname;
+            document.getElementById('setDescInput').value = currentUser.profileDesc || "";
+
+            if(currentUser.role === '주인장' || currentUser.role === '점원') {
+                document.getElementById('adminTab').style.display = 'block';
+                document.getElementById('setCafeNameInput').value = cafeConfig.cafeName;
+                if(currentUser.role === '주인장') {
+                    document.getElementById('staffTab').style.display = 'block';
+                    renderStaffList();
+                }
+            }
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function renderStaffList() {
+            const list = document.getElementById('userManageList');
+            const others = allUsers.filter(u => u.userId !== currentUser.userId);
+            list.innerHTML = others.map(u => {
+                const isStaff = cafeConfig.staffList.includes(u.nickname);
+                return `<div class="user-manage-item">
+                    <img src="${u.profileImg || 'https://via.placeholder.com/30'}" onerror="this.src='https://via.placeholder.com/30'">
+                    <span>${u.nickname}</span>
+                    <button class="staff-btn ${isStaff?'is-staff':''}" onclick="toggleStaff('${u.nickname}')">${isStaff?'점원 해제':'점원 임명'}</button>
+                </div>`;
+            }).join('') || '<p style="text-align:center; padding:20px; color:#ccc;">가입된 다른 유저가 없습니다.</p>';
+        }
+
+        function toggleStaff(nick) {
+            let newList = [...cafeConfig.staffList];
+            if(newList.includes(nick)) newList = newList.filter(n => n !== nick);
+            else newList.push(nick);
+            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { staffList: newList } });
+            showToast("권한이 업데이트되었습니다.");
+            cafeConfig.staffList = newList; renderStaffList();
+        }
+
+        function saveCafeName() {
+            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { cafeName: document.getElementById('setCafeNameInput').value } });
+            showToast("카페 이름이 변경되었습니다.");
+        }
+
+        // 공통 함수들
         function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
         async function handleAuth() {
             const userId = document.getElementById('authId').value, password = document.getElementById('authPw').value, nickname = document.getElementById('authNick').value;
             const url = authMode === 'login' ? '/api/login' : '/api/signup';
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, password, nickname }) });
             const data = await res.json();
-            if(data.success) { if(authMode === 'login') { currentUser = data.user; localStorage.setItem('cafeUser', JSON.stringify(currentUser)); location.reload(); } else { alert("가입됨!"); toggleAuthTab('login'); } } else alert(data.msg);
+            if(data.success) { if(authMode === 'login') { currentUser = data.user; localStorage.setItem('cafeUser', JSON.stringify(currentUser)); location.reload(); } else { alert("가입 성공! 로그인해주세요."); toggleAuthTab('login'); } } else alert(data.msg);
         }
-        function toggleAuthTab(m) { authMode = m; document.getElementById('authNick').style.display = m === 'signup' ? 'block' : 'none'; }
+        function toggleAuthTab(m) { authMode = m; document.getElementById('authNick').style.display = m === 'signup' ? 'block' : 'none'; document.getElementById('tabL').style.color = m === 'login' ? '#2db400' : '#aaa'; document.getElementById('tabS').style.color = m === 'signup' ? '#2db400' : '#aaa'; }
+        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
         function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
         function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
         function filterBoard(n, el) { document.querySelectorAll('.board-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); document.getElementById('currentBoardTitle').innerText = n; closePost(); renderPosts(); }
+        function toggleLike(postId) { if(!currentUser) return alert("로그인 필요"); socket.emit('like_post', { postId, nickname: currentUser.nickname }); }
+        function toggleRep(id) { const el = document.getElementById(`repBox-${id}`); el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; }
+        function submitComment(parentId = null) {
+            const inputId = parentId ? `repIn-${parentId}` : 'commentInput';
+            const content = document.getElementById(inputId).value.trim();
+            if(!content || !currentUser) return;
+            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content, parentId });
+            document.getElementById(inputId).value = "";
+        }
     </script>
 </body>
 </html>
