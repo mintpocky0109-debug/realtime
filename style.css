@@ -1,11 +1,11 @@
 :root {
-    --bg-main: #36393f;
-    --bg-card: #2f3136;
-    --bg-input: #202225;
-    --text-white: #ffffff;
-    --text-gray: #b9bbbe;
+    --bg-main: #1e1f22;
+    --bg-card: #2b2d31;
+    --bg-input: #1e1f22;
+    --text-white: #dbdee1;
+    --text-gray: #949ba4;
     --accent-blue: #5865f2;
-    --naver-green: #2db400;
+    --naver-green: #2db400; /* 이 값이 서버 설정에 따라 바뀝니다 */
     --admin-gold: #ffcc00;
     --staff-cyan: #00ffcc;
     --notice-red: #ff4747;
@@ -13,77 +13,33 @@
 }
 
 * { box-sizing: border-box; }
+body { margin: 0; padding: 0; background-color: var(--bg-main); color: var(--text-white); font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; }
 
-body {
-    margin: 0; padding: 0;
-    background-color: var(--bg-main);
-    color: var(--text-white);
-    font-family: 'Pretendard', sans-serif;
-    display: flex; flex-direction: column; align-items: center;
-    min-height: 100vh;
-}
+.settings-icon { position: fixed; top: 20px; right: 20px; font-size: 24px; cursor: pointer; z-index: 100; background: #313338; padding: 10px; border-radius: 50%; }
 
-/* 상단 공지 섹션 (개성 있는 디자인) */
-.notice-container {
-    width: 100%; max-width: var(--max-width);
-    margin: 20px 0; padding: 0 20px;
-}
-.notice-item {
-    background: linear-gradient(90deg, rgba(255, 71, 71, 0.1), rgba(88, 101, 242, 0.1));
-    border: 1px solid var(--notice-red);
-    border-radius: 12px; padding: 15px 20px;
-    display: flex; align-items: center; gap: 15px;
-    box-shadow: 0 4px 15px rgba(255, 71, 71, 0.1);
-}
-.notice-badge {
-    background: var(--notice-red); color: white;
-    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
-}
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { background: var(--bg-card); border-radius: 12px; width: 90%; max-width: 700px; height: 500px; display: flex; overflow: hidden; }
+.modal-sidebar { width: 180px; background: #1e1f22; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #3f4147; }
+.modal-body { flex: 1; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
 
-/* 설정 아이콘 (관리자/점원만 보이도록 JS 처리 예정) */
-.settings-icon {
-    position: fixed; top: 20px; right: 20px;
-    font-size: 24px; cursor: pointer; z-index: 100;
-    background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%;
-    display: none; /* 기본 숨김 */
-}
+.menu-item { padding: 12px; border-radius: 5px; cursor: pointer; color: var(--text-gray); font-weight: bold; font-size: 14px; transition: 0.2s; }
+.menu-item:hover, .menu-item.active { background: #35373c; color: white; }
 
-.modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000;
-}
-.modal-content {
-    background: var(--bg-card); padding: 40px; border-radius: 20px;
-    width: 90%; max-width: 450px; display: flex; flex-direction: column; gap: 20px;
-}
+/* 권한 부족 메뉴 효과 */
+.admin-only, .master-only { position: relative; }
+
+.action-btn { background: var(--naver-green); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.action-btn:hover { filter: brightness(1.2); }
 
 .cafe-header { width: 100%; max-width: var(--max-width); padding: 50px 20px 10px; }
-.cafe-header h1 { margin: 0; font-size: 36px; color: var(--text-white); }
-
 .control-bar { width: 100%; max-width: var(--max-width); display: flex; justify-content: flex-end; padding: 0 20px; margin-bottom: 20px; }
-.btn-write { background-color: var(--naver-green); color: white; border: none; padding: 14px 35px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+.btn-write { background-color: var(--naver-green); color: white; border: none; padding: 12px 30px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-#board { width: 100%; max-width: var(--max-width); display: flex; flex-direction: column; gap: 20px; padding: 0 20px 80px; }
+#board { width: 100%; max-width: var(--max-width); display: flex; flex-direction: column; gap: 15px; padding: 20px; }
+.post { background: var(--bg-card); padding: 25px; border-radius: 8px; }
+.post.notice-post { border-left: 5px solid var(--notice-red); }
 
-/* 일반 게시글 vs 공지 게시글 */
-.post { background-color: var(--bg-card); padding: 30px; border-radius: 15px; border-bottom: 1px solid #444; }
-.post.notice-post { border: 2px solid var(--notice-red); background-color: rgba(255, 71, 71, 0.05); }
+.badge-admin { background: var(--admin-gold); color: black; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; font-weight: bold; }
+.badge-staff { background: var(--staff-cyan); color: black; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; font-weight: bold; }
 
-.post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.badge-admin { background: var(--admin-gold); color: #000; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
-.badge-staff { background: var(--staff-cyan); color: #000; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
-
-.post-nickname { font-weight: bold; font-size: 18px; }
-.post-content { font-size: 17px; line-height: 1.8; color: #ddd; white-space: pre-wrap; }
-.post-image { width: 100%; border-radius: 10px; margin-top: 20px; }
-
-/* 작성 페이지 */
-.write-container { width: 100%; max-width: var(--max-width); padding: 40px 20px; }
-.write-box { background: var(--bg-card); padding: 40px; border-radius: 20px; display: flex; flex-direction: column; gap: 25px; }
-.input-field { width: 100%; background: var(--bg-input); border: 1px solid #444; border-radius: 8px; color: white; padding: 18px; font-size: 16px; outline: none; }
-textarea.input-field { height: 550px; }
-
-/* 공지 체크박스 영역 */
-.notice-check-area { display: none; align-items: center; gap: 10px; color: var(--notice-red); font-weight: bold; }
-
-footer { padding: 60px; color: var(--text-gray); font-size: 13px; text-align: center; }
+.input-field { width: 100%; background: var(--bg-input); border: 1px solid #3f4147; border-radius: 5px; color: white; padding: 12px; }

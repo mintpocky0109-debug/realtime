@@ -3,32 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>글 쓰기 - 커뮤니티</title>
+    <title>글 쓰기</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="write-container">
-        <div class="write-box">
-            <h2 style="margin:0;">📝 카페 글쓰기</h2>
-            
+    <div style="width:100%; max-width:900px; padding:40px 20px;">
+        <div class="write-box" style="background:var(--bg-card); padding:40px; border-radius:12px; display:flex; flex-direction:column; gap:20px;">
+            <h2>📝 새 게시물</h2>
             <input id="nickname" class="input-field" type="text" placeholder="닉네임 (주인장 인증: 이름#master123)">
             
-            <div id="noticeArea" class="notice-check-area">
-                <input type="checkbox" id="isNotice" style="width:20px; height:20px; cursor:pointer;">
-                <label for="isNotice" style="cursor:pointer;">이 글을 공지사항으로 등록</label>
+            <div onclick="document.getElementById('imageInput').click()" style="border: 2px dashed #4e5058; padding: 20px; border-radius: 8px; text-align:center; cursor:pointer; background:var(--bg-input);">
+                <span style="font-size:24px;">📷</span> <br> <b>사진 추가</b>
+                <div id="preview" style="margin-top:10px;"></div>
             </div>
+            <input type="file" id="imageInput" accept="image/*" style="display:none;">
 
-            <div style="margin: 5px 0;">
-                <label class="file-label" for="imageInput">📷 이미지 추가</label>
-                <input type="file" id="imageInput" accept="image/*" style="display:none;">
-                <div id="preview" style="margin-top:15px;"></div>
-            </div>
-
-            <textarea id="content" class="input-field" placeholder="내용을 입력하세요..."></textarea>
+            <textarea id="content" class="input-field" style="height:350px;" placeholder="내용을 입력하세요..."></textarea>
             
-            <div style="display:flex; gap:12px; justify-content: flex-end;">
-                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:8px; cursor:pointer; background:#4f545c; color:white; border:none; font-weight:bold;">취소</button>
-                <button onclick="send()" style="padding:15px 50px; border-radius:8px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold; font-size:16px;">등록하기</button>
+            <div id="noticeCheck" style="display:none; align-items:center; gap:8px;">
+                <input type="checkbox" id="isNotice"> <label for="isNotice" style="color:var(--notice-red); font-weight:bold;">중요 공지</label>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="location.href='/'" style="padding:15px 30px; border-radius:6px; cursor:pointer; background:#4e5058; color:white; border:none;">취소</button>
+                <button onclick="send()" style="padding:15px 50px; border-radius:6px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">업로드</button>
             </div>
         </div>
     </div>
@@ -39,15 +37,14 @@
         let b64 = "";
 
         window.onload = () => {
-            const savedNick = localStorage.getItem('userNickname') || "";
-            document.getElementById('nickname').value = savedNick;
-            
-            // 역할 확인 (주인장/점원 체크)
+            const saved = localStorage.getItem('userNickname') || "";
+            document.getElementById('nickname').value = saved;
             socket.on('update_role_list', roles => {
-                const myRole = roles[savedNick.split('#')[0]];
-                if(myRole === '주인장' || myRole === '점원') {
-                    document.getElementById('noticeArea').style.display = 'flex';
-                }
+                const role = roles[saved.split('#')[0]];
+                if(role === '주인장' || role === '점원') document.getElementById('noticeCheck').style.display = 'flex';
+            });
+            socket.on('update_config', config => {
+                document.documentElement.style.setProperty('--naver-green', config.themeColor);
             });
         };
 
@@ -57,22 +54,19 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     b64 = ev.target.result;
-                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100%; border-radius:8px; border:1px solid #444;">`;
+                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-height:100px; border-radius:5px;">`;
                 };
                 reader.readAsDataURL(file);
             }
         };
 
         function send() {
-            const nick = document.getElementById('nickname').value || '익명';
+            const nick = document.getElementById('nickname').value;
             const msg = document.getElementById('content').value;
-            const isNotice = document.getElementById('isNotice').checked;
-
-            if(!msg && !b64) return alert("내용을 입력하세요.");
-
-            if (confirm(isNotice ? "중요 공지사항으로 등록하시겠습니까?" : "글을 등록하시겠습니까?")) {
+            if(!nick || !msg) return alert("입력 완료!");
+            if(confirm("업로드 할까요?")) {
                 localStorage.setItem('userNickname', nick);
-                socket.emit('new_post', { nickname: nick, content: msg, image: b64, isNotice: isNotice });
+                socket.emit('new_post', { nickname: nick, content: msg, image: b64, isNotice: document.getElementById('isNotice').checked });
                 location.href = '/';
             }
         }
