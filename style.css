@@ -1,221 +1,68 @@
-/* 1. 기본 테마 설정 */
 :root {
     --naver-green: #2db400;
+    --naver-green-light: rgba(45, 180, 0, 0.1);
     --naver-bg: #f2f4f7;
     --white: #ffffff;
-    --border-color: #eeeeee;
-    --text-main: #333333;
+    --border-color: #e5e7eb;
+    --text-main: #1a1a1a;
     --text-sub: #666666;
-    --text-gray: #999999;
+    --text-gray: #9ca3af;
 }
 
-* { 
-    box-sizing: border-box; 
-    -webkit-tap-highlight-color: transparent; 
-}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background-color: var(--naver-bg); color: var(--text-main); font-family: 'Pretendard', -apple-system, sans-serif; line-height: 1.6; overflow-x: hidden;}
 
-body { 
-    margin: 0; 
-    background-color: var(--naver-bg); 
-    color: var(--text-main); 
-    font-family: 'Pretendard', -apple-system, sans-serif; 
-    line-height: 1.6;
-}
+/* 헤더 */
+.header { background: var(--white); height: 65px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
-/* 2. 레이아웃: 헤더 */
-.header { 
-    background: var(--white); 
-    height: 60px;
-    padding: 0 20px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
+/* 메인 구조 */
+.main-wrapper { display: flex; max-width: 1080px; margin: 0 auto; min-height: calc(100vh - 65px); }
 
-/* 3. 메인 레이아웃 (사이드바 + 콘텐츠) */
-.main-wrapper { 
-    display: flex; 
-    max-width: 1080px; 
-    margin: 0 auto; 
-    min-height: calc(100vh - 60px); 
-}
+/* 사이드바 */
+.sidebar { width: 220px; background: var(--white); border-right: 1px solid var(--border-color); padding: 20px 10px; flex-shrink: 0; }
+.sidebar-title { font-size: 13px; color: var(--text-gray); font-weight: bold; padding: 0 15px 10px; border-bottom: 1px solid #f3f4f6; margin-bottom: 10px; }
 
-/* 4. 사이드바 (게시판 목록) */
-.sidebar { 
-    width: 210px; 
-    background: var(--white); 
-    border-right: 1px solid var(--border-color); 
-    padding: 20px 10px; 
-    flex-shrink: 0;
-}
+.board-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; font-size: 14px; transition: all 0.2s ease; margin-bottom: 2px; color: #4b5563; display: flex; align-items: center; gap: 8px; }
+.board-item:hover { background: var(--naver-green-light); color: var(--naver-green); }
+.board-item.active { font-weight: bold; color: var(--naver-green); background: var(--naver-green-light); }
 
-.sidebar h3 { 
-    font-size: 13px; 
-    color: var(--text-sub); 
-    padding-left: 10px; 
-    margin-bottom: 10px; 
-}
+/* 콘텐츠 영역 */
+.content { flex: 1; background: var(--white); padding: 0; position: relative; }
+.content-inner { padding: 30px; }
 
-.board-item { 
-    padding: 10px 15px; 
-    cursor: pointer; 
-    border-radius: 6px; 
-    font-size: 14px; 
-    transition: 0.2s;
-    margin-bottom: 2px;
-}
+/* 리스트 스타일 */
+.post-list-item { padding: 18px 25px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
+.post-list-item:hover { background: #fafafa; }
+.badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; color: var(--text-sub); background: #f3f4f6; font-weight: 500; }
 
-.board-item:hover { 
-    background: #f5f5f5; 
-    color: var(--naver-green); 
-}
+/* 상세 보기 (Full Page 느낌) */
+#postDetailView { display: none; background: white; min-height: 100%; position: absolute; inset: 0; z-index: 5; padding: 40px; }
+.back-btn { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-sub); font-size: 14px; margin-bottom: 25px; transition: color 0.2s; }
+.back-btn:hover { color: var(--naver-green); }
 
-.board-item.active { 
-    font-weight: bold; 
-    color: var(--naver-green); 
-    background: #f0fdf4; 
-}
-
-/* 5. 메인 콘텐츠 (게시글 목록) */
-.content { 
-    flex: 1; 
-    background: var(--white); 
-    padding: 30px; 
-}
-
-.post-list-item { 
-    padding: 15px 0; 
-    border-bottom: 1px solid #f2f2f2; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    cursor: pointer; 
-}
-
-.post-list-item:hover { 
-    background: #fafafa; 
-}
-
-.badge { 
-    background: #f2f2f2; 
-    padding: 2px 6px; 
-    border-radius: 3px; 
-    font-size: 11px; 
-    color: var(--text-sub); 
-    margin-right: 8px;
-}
-
-/* 6. 모달 (게시글 상세보기/설정) */
-.modal { 
-    position: fixed; 
-    inset: 0; 
-    background: rgba(0,0,0,0.6); 
-    display: none; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 1000; 
-    padding: 20px;
-}
-
-.modal-content { 
-    background: var(--white); 
-    width: 100%; 
-    max-width: 720px; 
-    height: 90vh; 
-    border-radius: 12px; 
-    overflow: hidden; 
-    display: flex; 
-    flex-direction: column; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-
-.modal-header { 
-    padding: 15px 20px; 
-    border-bottom: 1px solid var(--border-color); 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-}
-
-.modal-body { 
-    padding: 30px; 
-    overflow-y: auto; 
-    flex: 1; 
-}
-
-.modal-footer { 
-    padding: 15px 20px; 
-    border-top: 1px solid var(--border-color); 
-    display: flex; 
-    gap: 10px; 
-    background: #fafafa;
-}
-
-/* 7. 댓글 및 답글 시스템 */
-.comment-section { margin-top: 40px; border-top: 1px solid var(--border-color); }
-.comment { 
-    padding: 15px 0; 
-    border-bottom: 1px solid #f9f9f9; 
-    font-size: 14px; 
-}
-
-.comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.comment-nick { font-weight: bold; }
+/* 댓글 디자인 강화 */
+.comment-section { margin-top: 50px; border-top: 1px solid var(--border-color); padding-top: 30px; }
+.comment { padding: 15px; border: 1px solid #f3f4f6; border-radius: 10px; margin-bottom: 12px; background: #fff; position: relative;}
+.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; border-bottom: 1px solid #f9fafb; padding-bottom: 5px;}
+.comment-nick { font-weight: 700; font-size: 14px; }
 .comment-time { font-size: 12px; color: var(--text-gray); }
 
-.reply { 
-    margin-left: 30px; 
-    margin-top: 10px; 
-    padding: 10px; 
-    background: #f8f9fa; 
-    border-radius: 6px; 
-    position: relative;
-}
+.reply { margin-left: 30px; margin-top: 8px; padding: 15px; background: #f9fafb; border: 1px solid #edf2f7; border-radius: 10px; border-left: 4px solid #cbd5e0; }
 
-.reply::before {
-    content: "ㄴ";
-    position: absolute;
-    left: -20px;
-    color: var(--text-gray);
-}
+/* 설정창 최적화 */
+.modal-content { background: var(--white); width: 100%; max-width: 450px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+.settings-menu { display: flex; flex-direction: column; gap: 20px; padding: 25px; }
+.setting-section { padding: 15px; background: #f9fafb; border-radius: 12px; border: 1px solid #f3f4f6; }
+.setting-section h4 { margin: 0 0 10px 0; font-size: 14px; color: var(--text-sub); }
 
-/* 8. 입력창 및 버튼 */
-.input-style { 
-    width: 100%; 
-    padding: 12px; 
-    border: 1px solid #ddd; 
-    border-radius: 6px; 
-    font-size: 15px;
-    margin-bottom: 15px; 
-    outline: none;
-}
+/* 버튼 및 인풋 */
+.input-style { width: 100%; padding: 12px 15px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 15px; outline: none; transition: all 0.2s; }
+.input-style:focus { border-color: var(--naver-green); box-shadow: 0 0 0 3px var(--naver-green-light); }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: transform 0.1s; }
+.btn:active { transform: scale(0.98); }
+.btn-green { background: var(--naver-green); color: var(--white); }
 
-.input-style:focus { border-color: var(--naver-green); }
-
-.btn { 
-    padding: 10px 20px; 
-    border-radius: 6px; 
-    border: none; 
-    cursor: pointer; 
-    font-weight: bold; 
-    font-size: 14px;
-    transition: 0.2s;
-}
-
-.btn-green { 
-    background: var(--naver-green); 
-    color: var(--white); 
-}
-
-.btn-green:hover { background: #269a00; }
-
-/* 9. 모바일 대응 */
 @media (max-width: 768px) {
-    .sidebar { display: none; } /* 모바일은 나중에 햄버거 메뉴로 대체하거나 숨김 */
-    .content { padding: 15px; }
-    .modal-content { height: 100vh; max-width: 100%; border-radius: 0; }
+    .sidebar { display: none; }
+    #postDetailView { padding: 20px; }
 }

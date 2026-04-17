@@ -28,32 +28,26 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     themeColor: "#2db400",
     cafeName: "☕ 카페 에스프레소",
     boards: ["자유게시판", "공지사항", "가입인사"],
-    ownerNick: null, // 주인장은 단 한 명
-    staffList: []    // 점원 목록
+    ownerNick: null,
+    staffList: []
 });
 
 io.on('connection', (socket) => {
-    // 최초 접속 시 권한 정보 포함 전송
     socket.emit('load_all', { posts, config: cafeConfig });
 
-    // 글 작성 및 권한 부여
     socket.on('new_post', (data) => {
         let role = "멤버";
         let nick = data.nickname;
 
-        // 주인장 최초 등록 또는 인증 (비밀코드 #admin777 가정)
         if (nick.includes('#admin777')) {
             nick = nick.replace('#admin777', '');
             if (!cafeConfig.ownerNick || cafeConfig.ownerNick === nick) {
-                cafeConfig.ownerNick = nick; // 주인장 영구 등록
+                cafeConfig.ownerNick = nick;
                 role = "주인장";
                 fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
             }
-        } else if (nick === cafeConfig.ownerNick) {
-            role = "주인장";
-        } else if (cafeConfig.staffList.includes(nick)) {
-            role = "점원";
-        }
+        } else if (nick === cafeConfig.ownerNick) { role = "주인장"; }
+        else if (cafeConfig.staffList.includes(nick)) { role = "점원"; }
 
         const newPost = {
             id: Date.now(),
@@ -63,7 +57,7 @@ io.on('connection', (socket) => {
             content: data.content,
             image: data.image,
             time: new Date().toLocaleString(),
-            likes: 0,
+            likedBy: [], // 좋아요 누른 사람들 목록
             comments: []
         };
         posts.push(newPost);
@@ -71,13 +65,21 @@ io.on('connection', (socket) => {
         io.emit('update_posts', posts);
     });
 
-    // 커피(좋아요)
-    socket.on('like_post', (postId) => {
-        const post = posts.find(p => p.id === postId);
-        if(post) { post.likes++; io.emit('update_posts', posts); fs.writeFileSync(DATA_FILE, JSON.stringify(posts)); }
+    // 커피 쏘기 (좋아요 토글)
+    socket.on('like_post', (data) => {
+        const post = posts.find(p => p.id === data.postId);
+        if(post && data.nickname) {
+            const index = post.likedBy.indexOf(data.nickname);
+            if(index === -1) {
+                post.likedBy.push(data.nickname);
+            } else {
+                post.likedBy.splice(index, 1);
+            }
+            io.emit('update_posts', posts);
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
+        }
     });
 
-    // 댓글/답글
     socket.on('new_comment', (data) => {
         const post = posts.find(p => p.id === data.postId);
         if(post) {
@@ -93,22 +95,21 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 관리자 기능 (보안 강화)
     socket.on('admin_action', (data) => {
         const isOwner = data.adminNick === cafeConfig.ownerNick;
         const isStaff = cafeConfig.staffList.includes(data.adminNick);
 
-        if (data.type === 'hire' && isOwner) { // 점원 고용은 주인장만 가능
+        if (data.type === 'hire' && isOwner) {
             if (!cafeConfig.staffList.includes(data.targetNick)) {
                 cafeConfig.staffList.push(data.targetNick);
                 fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
                 io.emit('update_config', cafeConfig);
             }
-        } else if (data.type === 'config' && (isOwner || isStaff)) { // 디자인은 둘 다 가능
+        } else if (data.type === 'config' && (isOwner || isStaff)) {
             cafeConfig = { ...cafeConfig, ...data.config };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
             io.emit('update_config', cafeConfig);
-        } else if (data.type === 'delete_all' && isOwner) { // 전체 삭제는 주인장만
+        } else if (data.type === 'delete_all' && isOwner) {
             posts = [];
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts));
             io.emit('update_posts', posts);
@@ -117,4 +118,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`http://localhost:${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Server started on port ${PORT}`));
