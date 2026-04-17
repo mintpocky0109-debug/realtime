@@ -7,17 +7,18 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
-// [수정] Socket.io 전송 용량을 50MB로 대폭 늘립니다.
+// [설정] Socket.io 전송 용량을 50MB로 설정 (사진 전송용)
 const io = new Server(server, {
-    maxHttpBufferSize: 5e7 // 50MB 설정
+    maxHttpBufferSize: 5e7 
 });
 
-// [추가] Express 서버도 큰 데이터를 주고받을 수 있게 설정합니다.
+// [설정] 서버가 큰 데이터(Base64 이미지)를 처리할 수 있도록 설정
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// 서버 시작 시 기존 데이터 불러오기
 let messages = [];
 if (fs.existsSync(DATA_FILE)) {
     try {
@@ -29,28 +30,40 @@ if (fs.existsSync(DATA_FILE)) {
     }
 }
 
+// --- 페이지 경로 설정 ---
+
+// 1. 메인 게시판 페이지 (index.html)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// 2. 글쓰기 전용 페이지 (write.html)
+// 이제 주소창에 /write 를 입력하면 글쓰기 창이 뜹니다.
+app.get('/write', (req, res) => {
+    res.sendFile(path.join(__dirname, 'write.html'));
+});
+
+// --- 소켓 통신 설정 ---
+
 io.on('connection', (socket) => {
-    // 기존 내역 보내기
+    // 접속한 사람에게 기존 게시글 목록 전송
     socket.emit('load_history', messages);
 
+    // 새 게시글이 들어왔을 때 실행
     socket.on('new_post', (data) => {
         const messageData = {
             nickname: data.nickname,
             content: data.content,
-            image: data.image, // [중요] 이미지 데이터를 객체에 포함!
+            image: data.image, 
             time: new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' })
         };
 
         messages.push(messageData);
         
-        // 파일에 저장 (사진이 포함되어 파일이 커질 수 있습니다)
+        // JSON 파일에 영구 저장
         fs.writeFileSync(DATA_FILE, JSON.stringify(messages, null, 2));
 
-        // 모든 사용자에게 전송
+        // 실시간으로 모든 접속자에게 새 글 알림
         io.emit('show_post', messageData);
     });
 });

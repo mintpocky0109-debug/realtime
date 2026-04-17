@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>글 작성하기</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; }
+        .write-area { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { height: 250px; resize: none; }
+        button { padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .back-btn { background-color: #6c757d; margin-top: 5px; }
+        #preview img { max-width: 150px; margin-top: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>📝 새 게시글 작성</h2>
+    <div class="write-area">
+        <div class="input-group">
+            <input id="nickname" type="text" placeholder="닉네임">
+            <input type="file" id="imageInput" accept="image/*">
+            <div id="preview"></div>
+            <textarea id="content" placeholder="내용을 입력하세요!"></textarea>
+            <button onclick="send()">게시글 올리기</button>
+            <button class="back-btn" onclick="location.href='/'">취소</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let b64Image = "";
+        document.getElementById('imageInput').onchange = function(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                b64Image = ev.target.result;
+                document.getElementById('preview').innerHTML = `<img src="${b64Image}">`;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+        function send() {
+            const nick = document.getElementById('nickname').value || '익명';
+            const msg = document.getElementById('content').value;
+            if (msg || b64Image) {
+                socket.emit('new_post', { nickname: nick, content: msg, image: b64Image });
+                alert("게시되었습니다!");
+                location.href = '/'; // 글 쓰고 게시판으로 자동 이동
+            }
+        }
+    </script>
+</body>
+</html>
