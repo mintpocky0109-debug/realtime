@@ -4,13 +4,33 @@
     <meta charset="UTF-8">
     <title>실시간 게시판</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; }
-        #board { border: 1px solid #ccc; height: 400px; overflow-y: auto; padding: 10px; background: white; border-radius: 8px; margin-bottom: 10px; display: flex; flex-direction: column; }
-        .post { border-bottom: 1px solid #eee; padding: 8px 0; }
-        .input-area { display: flex; gap: 5px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        #content { flex-grow: 1; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; }
+        h2 { color: #333; }
+        
+        /* 게시판 영역 */
+        #board { width: 100%; max-width: 600px; border: 1px solid #ccc; height: 500px; overflow-y: auto; padding: 15px; background: white; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* 게시글 디자인 */
+        .post { border-bottom: 1px solid #eee; padding: 12px 0; word-break: break-all; }
+        .post img { max-width: 100%; border-radius: 8px; margin-top: 10px; display: block; }
+        
+        /* 글쓰기 분리 영역 */
+        .write-area { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .write-area h3 { margin-top: 0; font-size: 1.1em; color: #555; }
+        
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        .input-top { display: flex; gap: 10px; }
+        
+        input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        textarea { resize: none; height: 80px; font-family: inherit; }
+        
+        .file-label { display: inline-block; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; cursor: pointer; text-align: center; font-size: 13px; }
+        #imageInput { display: none; } /* 실제 파일버튼은 숨김 */
+        
+        #preview-container img { max-width: 100px; margin-top: 10px; border-radius: 4px; border: 1px solid #eee; }
+        
+        button { padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 15px; }
+        button:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
@@ -19,10 +39,19 @@
 
     <div id="board"></div>
 
-    <div class="input-area">
-        <input id="nickname" type="text" placeholder="닉네임" style="width: 80px;">
-        <input id="content" type="text" placeholder="내용을 입력하세요!" onkeypress="if(event.keyCode==13) send()">
-        <button onclick="send()">올리기</button>
+    <div class="write-area">
+        <h3>📝 새 게시글 작성</h3>
+        <div class="input-group">
+            <div class="input-top">
+                <input id="nickname" type="text" placeholder="닉네임" style="width: 100px;">
+                <label class="file-label" for="imageInput">📷 사진 선택</label>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+            
+            <div id="preview-container"></div> <textarea id="content" placeholder="내용을 입력하세요!"></textarea>
+            
+            <button onclick="send()">게시글 올리기</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -31,43 +60,78 @@
         const board = document.getElementById('board');
         const input = document.getElementById('content');
         const nickInput = document.getElementById('nickname');
+        const imageInput = document.getElementById('imageInput');
+        const previewContainer = document.getElementById('preview-container');
 
-        // [추가] 서버에 연결되자마자 기존 메시지들을 불러옵니다.
+        let selectedImage = ""; // 사진 데이터를 담을 변수
+
+        // 사진 선택 시 미리보기 기능
+        imageInput.onchange = function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    selectedImage = event.target.result; // 이미지를 글자로 변환(Base64)
+                    previewContainer.innerHTML = `<img src="${selectedImage}">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // 서버에서 기존 메시지들 불러오기
         socket.on('load_history', (history) => {
-            board.innerHTML = ''; // 화면 초기화
-            // 과거 내역은 시간순이므로 하나씩 화면에 표시
+            board.innerHTML = '';
             history.forEach(data => {
                 renderPost(data);
             });
         });
 
-        // 전송 버튼 누를 때 실행
+        // 전송 버튼 함수
         function send() {
             const nick = nickInput.value || '익명';
             const msg = input.value;
             
-            if (msg) {
-                // 서버로 {닉네임, 내용} 전송
-                socket.emit('new_post', { nickname: nick, content: msg });
-                input.value = ''; // 입력창 비우기
+            if (msg || selectedImage) {
+                // 서버로 {닉네임, 내용, 사진} 전송
+                socket.emit('new_post', { 
+                    nickname: nick, 
+                    content: msg,
+                    image: selectedImage 
+                });
+
+                // 전송 후 입력칸들 초기화
+                input.value = '';
+                imageInput.value = '';
+                previewContainer.innerHTML = '';
+                selectedImage = "";
+            } else {
+                alert("내용이나 사진을 추가해 주세요!");
             }
         }
 
-        // 서버에서 새 메시지를 받았을 때 실행
+        // 서버에서 새 메시지를 받았을 때
         socket.on('show_post', (data) => {
             renderPost(data);
         });
 
-        // [추가] 메시지를 화면에 그리는 기능을 별도 함수로 만들었습니다.
+        // 게시글 화면에 그리기
         function renderPost(data) {
             const post = document.createElement('div');
             post.className = 'post';
+            
+            // 사진이 있으면 img 태그를 추가, 없으면 빈 문자열
+            const imgTag = data.image ? `<img src="${data.image}">` : "";
+            
             post.innerHTML = `
                 <strong style="color: #007bff;">${data.nickname}</strong> 
                 <span style="font-size: 0.8em; color: #999;">(${data.time})</span><br>
-                ${data.content}
+                <div style="margin-top: 8px; white-space: pre-wrap;">${data.content}</div>
+                ${imgTag}
             `;
-            board.prepend(post); // 최신글이 위로 오게 함
+            board.prepend(post);
+            
+            // 새 글이 올라오면 스크롤을 맨 위로 (또는 보드로 이동)
+            board.scrollTop = 0;
         }
     </script>
 </body>
