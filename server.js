@@ -24,11 +24,10 @@ let cafeConfig = loadJson(CONFIG_FILE, { cafeName: "☕ 카페 에스프레소",
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
 
-// 회원가입/로그인/프로필 수정 API
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (users.some(u => u.userId === userId)) return res.json({ success: false });
-    users.push({ userId, password, nickname, role: userId === "Mint_pocky" ? "주인장" : "멤버", profileImg: "", profileDesc: "반갑습니다!", bgImg: "" });
+    users.push({ userId, password, nickname, role: userId === "Mint_pocky" ? "주인장" : "멤버", profileImg: "", profileDesc: "안녕하세요!", bgImg: "" });
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
@@ -44,11 +43,11 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
-    const userIndex = users.findIndex(u => u.userId === userId);
-    if (userIndex !== -1) {
-        users[userIndex] = { ...users[userIndex], nickname, profileImg, profileDesc, bgImg };
+    const idx = users.findIndex(u => u.userId === userId);
+    if (idx !== -1) {
+        users[idx] = { ...users[idx], nickname, profileImg, profileDesc, bgImg };
         fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
-        res.json({ success: true, user: users[userIndex] });
+        res.json({ success: true, user: users[idx] });
     } else res.json({ success: false });
 });
 
@@ -57,25 +56,25 @@ io.on('connection', (socket) => {
 
     socket.on('new_post', (data) => {
         const user = users.find(u => u.nickname === data.nickname);
-        const newPost = { id: Date.now(), ...data, role: user?user.role:"멤버", time: new Date().toLocaleString(), likedBy: [], comments: [] };
+        const newPost = { id: Date.now(), ...data, role: user?user.role:"멤버", profileImg: user?user.profileImg:"", time: new Date().toLocaleString(), likedBy: [], comments: [] };
         posts.push(newPost);
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
 
+    // 1번 요청: 커피 쏘기 토글 로직
     socket.on('toggle_like', ({ postId, userId }) => {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
+        if (!post.likedBy) post.likedBy = [];
         const idx = post.likedBy.indexOf(userId);
-        if (idx === -1) post.likedBy.push(userId);
-        else post.likedBy.splice(idx, 1);
+        if (idx === -1) post.likedBy.push(userId); // 처음 누르면 추가
+        else post.likedBy.splice(idx, 1); // 다시 누르면 삭제
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
 
     socket.on('update_config', (data) => {
-        const user = users.find(u => u.nickname === data.adminNick);
-        if (!user || (user.role !== '주인장' && user.role !== '점원')) return;
         cafeConfig = { ...cafeConfig, ...data.newConfig };
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
         io.emit('update_config', cafeConfig);
