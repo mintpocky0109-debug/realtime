@@ -2,15 +2,19 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>실시간 커뮤니티</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h2>🚀 실시간 커뮤니티</h2>
-    </header>
+    <div class="cafe-header">
+        <h1>🚀 우리들의 비밀 커뮤니티</h1>
+        <p>자유롭게 소통하고 사진을 공유하는 공간입니다. (실시간 업데이트 중)</p>
+    </div>
 
-    <button class="btn-write" onclick="location.href='/write'">+ 새 게시글 작성</button>
+    <div class="control-bar">
+        <button class="btn-write" onclick="location.href='/write'">📝 글쓰기</button>
+    </div>
 
     <div id="board"></div>
 

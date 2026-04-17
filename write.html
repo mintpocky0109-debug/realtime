@@ -2,23 +2,29 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>글 작성</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글 쓰기 - 커뮤니티</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="write-box">
-        <h3>📝 새 게시글 작성</h3>
-        <input id="nickname" class="input-field" type="text" placeholder="닉네임">
-        
-        <input type="file" id="imageInput" accept="image/*" style="display:none;">
-        <label for="imageInput" style="cursor:pointer; color:var(--accent-blue);">📷 사진 첨부하기</label>
-        <div id="preview" style="margin-top:10px;"></div>
+    <div class="write-container">
+        <div class="write-box">
+            <div class="write-title">카페 글쓰기</div>
+            
+            <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요">
+            
+            <div>
+                <label class="file-label" for="imageInput">📷 사진 첨부</label>
+                <input type="file" id="imageInput" accept="image/*" style="display:none;">
+                <div id="preview" style="margin-top:10px;"></div>
+            </div>
 
-        <textarea id="content" class="input-field" placeholder="내용을 입력하세요..."></textarea>
-        
-        <div style="display:flex; gap:10px;">
-            <button onclick="location.href='/'" style="flex:1; padding:15px; border-radius:8px; cursor:pointer; background:#4f545c; color:white; border:none;">취소</button>
-            <button onclick="send()" style="flex:2; padding:15px; border-radius:8px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">게시하기</button>
+            <textarea id="content" class="input-field" placeholder="내용을 마음껏 작성해 보세요..."></textarea>
+            
+            <div style="display:flex; gap:10px; justify-content: flex-end;">
+                <button onclick="location.href='/'" style="padding:12px 25px; border-radius:4px; cursor:pointer; background:#4f545c; color:white; border:none;">취소</button>
+                <button onclick="send()" style="padding:12px 40px; border-radius:4px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">등록하기</button>
+            </div>
         </div>
     </div>
 
@@ -33,7 +39,7 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     b64 = ev.target.result;
-                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100px; border-radius:5px;">`;
+                    document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:200px; border-radius:5px; border:1px solid #444;">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -44,7 +50,7 @@
             const msg = document.getElementById('content').value;
             if(msg || b64) {
                 socket.emit('new_post', { nickname: nick, content: msg, image: b64 });
-                alert("게시되었습니다!");
+                alert("성공적으로 등록되었습니다!");
                 location.href = '/';
             }
         }

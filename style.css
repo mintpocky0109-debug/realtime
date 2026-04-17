@@ -1,114 +1,118 @@
 /* style.css */
 :root {
-    --bg-main: #36393f;        /* 디스코드 배경색 */
-    --bg-card: #2f3136;        /* 게시글 카드 배경 */
-    --bg-input: #202225;       /* 입력창 배경 */
+    --bg-main: #36393f;
+    --bg-card: #2f3136;
+    --bg-input: #202225;
     --text-white: #ffffff;
     --text-gray: #b9bbbe;
-    --accent-blue: #5865f2;    /* 디스코드 포인트 */
-    --naver-green: #2db400;    /* 네이버 카페 포인트 */
-    --max-width: 720px;        /* PC에서 가장 보기 좋은 너비 */
+    --accent-blue: #5865f2;
+    --naver-green: #2db400;
+    --max-width: 850px; /* 네이버 카페와 비슷한 시원한 너비 */
 }
 
 body {
     margin: 0; padding: 0;
     background-color: var(--bg-main);
     color: var(--text-white);
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    font-family: 'Pretendard', sans-serif;
     display: flex; flex-direction: column; align-items: center;
-    line-height: 1.5;
 }
 
-/* 상단 헤더 */
-header {
+/* 1. 상단 카페 헤더 스타일 추가 */
+.cafe-header {
     width: 100%;
     max-width: var(--max-width);
-    padding: 30px 20px 10px 20px;
+    padding: 40px 20px;
     box-sizing: border-box;
-    text-align: left; /* 카페 느낌으로 왼쪽 정렬 */
+    border-bottom: 1px solid #444;
+    margin-bottom: 20px;
 }
+.cafe-header h1 { margin: 0; font-size: 28px; color: var(--text-white); }
+.cafe-header p { margin: 10px 0 0; color: var(--text-gray); font-size: 14px; }
 
-header h2 {
-    font-size: 24px;
-    margin: 0;
-    letter-spacing: -0.5px;
-}
-
-/* 글쓰기 버튼 */
-.btn-write {
-    width: calc(100% - 40px); /* 여백 고려 */
+/* 2. 게시판 컨트롤 바 (작성 버튼 등) */
+.control-bar {
+    width: 100%;
     max-width: var(--max-width);
-    background-color: var(--accent-blue);
-    color: white; border: none; padding: 14px;
-    border-radius: 8px; font-size: 16px; font-weight: bold;
-    cursor: pointer; transition: 0.2s; 
-    margin: 20px 0;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 20px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
 }
-.btn-write:hover { background-color: #4752c4; transform: translateY(-1px); }
+.btn-write {
+    background-color: var(--naver-green);
+    color: white; border: none; padding: 12px 24px;
+    border-radius: 6px; font-size: 15px; font-weight: bold;
+    cursor: pointer; transition: 0.2s;
+}
+.btn-write:hover { opacity: 0.9; transform: translateY(-1px); }
 
-/* 게시판 목록 영역 */
+/* 3. 게시물 리스트 */
 #board {
     width: 100%;
     max-width: var(--max-width);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 0 20px 40px 20px; /* 좌우 여백 */
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 0 20px 50px;
     box-sizing: border-box;
 }
-
-/* 게시글 카드 */
 .post {
     background-color: var(--bg-card);
-    padding: 20px; 
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-left: 4px solid var(--naver-green);
-    transition: transform 0.1s;
+    padding: 25px; border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
+.post-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+.post-nickname { font-weight: bold; color: #fff; }
+.post-time { font-size: 12px; color: var(--text-gray); }
+.post-content { font-size: 16px; line-height: 1.7; color: #ddd; white-space: pre-wrap; }
+.post-image { width: 100%; border-radius: 8px; margin-top: 15px; border: 1px solid #444; }
 
-.post-header {
-    display: flex;
-    justify-content: space-between; /* 닉네임과 시간을 양끝으로 */
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.post-nickname {
-    font-weight: bold;
-    font-size: 16px;
-    color: var(--text-white);
-}
-
-.post-time {
-    font-size: 12px;
-    color: var(--text-gray);
-}
-
-.post-content {
-    font-size: 15px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    color: #dbdee1;
-    word-break: break-all; /* 긴 영문/링크 깨짐 방지 */
-}
-
-.post-image {
-    width: 100%; /* 카드 너비에 맞춤 */
-    max-height: 500px; /* 너무 길어지지 않게 */
-    object-fit: cover; /* 비율 유지하며 채움 */
-    border-radius: 8px;
-    margin-top: 15px;
-    border: 1px solid #444;
-}
-
-/* 글쓰기 전용 레이아웃 (write.html) */
-.write-box {
-    width: calc(100% - 40px);
-    max-width: 600px;
-    background: var(--bg-card);
-    padding: 25px;
-    border-radius: 15px;
-    margin-top: 40px;
+/* 4. 작성 페이지 (write.html) 최적화 - 아주 넓게! */
+.write-container {
+    width: 100%;
+    max-width: var(--max-width);
+    padding: 40px 20px;
     box-sizing: border-box;
+}
+.write-box {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.write-title { font-size: 22px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 10px; }
+
+.input-field {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: white;
+    padding: 15px;
+    box-sizing: border-box;
+    font-size: 16px;
+    outline: none;
+}
+/* 내용 입력창을 아주 크게 */
+textarea.input-field {
+    height: 450px; 
+    line-height: 1.6;
+}
+
+.file-label {
+    display: inline-block;
+    padding: 10px 18px;
+    background: #4f545c;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* 모바일 대응 */
+@media (max-width: 600px) {
+    .cafe-header h1 { font-size: 22px; }
+    textarea.input-field { height: 300px; }
+    .write-box { padding: 20px; }
 }
