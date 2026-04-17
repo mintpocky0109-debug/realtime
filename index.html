@@ -14,6 +14,8 @@
         .board-item.active { background: #e8f5e9; color: #2db400; font-weight: bold; }
         .post-img-preview { max-width: 100%; border-radius: 10px; margin-top: 15px; border: 1px solid #eee; }
         .photo-icon { font-size: 12px; vertical-align: middle; color: #888; margin-left: 5px; }
+        /* 회원 관리 칸 공간 확보 */
+        #userListArea { min-height: 300px; }
     </style>
 </head>
 <body>
@@ -158,7 +160,8 @@
             document.getElementById('postDetailBody').innerHTML = `<h3>${p.nickname}</h3><p style="white-space:pre-wrap;">${p.content}</p>`;
             document.getElementById('postImgArea').innerHTML = (p.image && p.image !== "") ? `<img src="${p.image}" class="post-img-preview">` : "";
             const isLiked = currentUser && p.likedBy && p.likedBy.includes(currentUser.userId);
-            document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})">${isLiked?'❤️':'🤍'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
+            /* 하트를 커피 아이콘으로 변경 */
+            document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})">${isLiked?'☕':'🍵'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
         }
 
         function toggleLike(postId) { if(!currentUser) return alert("로그인하세요."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
@@ -201,7 +204,7 @@
                         ${u.userId!=='Mint_pocky' && u.userId!==currentUser.userId ? `<button class="btn btn-small" style="background:red;color:white;" onclick="manageUser('${u.userId}','kick')">강퇴</button>`:''}
                     </div>
                 </div>`;
-            }).join('');
+            }).join('') || '<div style="padding:50px; text-align:center; color:#ccc;">관리할 회원이 없습니다.</div>';
         }
 
         async function manageUser(targetId, action) {
