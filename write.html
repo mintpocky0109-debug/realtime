@@ -2,67 +2,84 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>글쓰기</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f5f6f7; padding: 0; margin: 0; }
+        .write-container { 
+            max-width: 800px; 
+            margin: 20px auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        @media (max-width: 600px) {
+            .write-container { margin: 10px; padding: 15px; }
+            .btn { padding: 12px; font-size: 16px; }
+        }
+        #pvImg { max-width: 100%; margin-top: 15px; border-radius: 8px; display: none; }
+        select, textarea { width: 100%; box-sizing: border-box; font-family: inherit; }
+    </style>
 </head>
-<body style="background:#fff; padding:20px;">
-    <div style="max-width:700px; margin:0 auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0;">📝 새 글 쓰기</h2>
-            <button class="btn btn-green" onclick="send()" style="padding:10px 25px; font-size:16px;">등록하기</button>
-        </div>
+<body>
+    <div class="write-container">
+        <h2 style="margin-top:0;">📝 새 글 쓰기</h2>
+        <select id="boardSel" class="input-style" style="margin-bottom:10px;"></select>
+        <textarea id="content" class="input-style" style="height:300px; resize:none;" placeholder="내용을 입력하세요..."></textarea>
         
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <select id="boardSelect" class="input-style" style="flex:1; margin:0;"></select>
-            <input id="nickname" type="text" class="input-style" style="flex:1; margin:0;" readonly>
+        <div style="margin-top:15px;">
+            <button class="btn" onclick="document.getElementById('imgF').click()" style="background:#eee; margin-bottom:10px; width:100%;">🖼️ 사진 첨부</button>
+            <input type="file" id="imgF" style="display:none;" accept="image/*" onchange="preview(this)">
+            <img id="pvImg">
         </div>
 
-        <textarea id="content" placeholder="나누고 싶은 이야기를 적어주세요." class="input-style" style="height:350px; resize:none;"></textarea>
-        
-        <div style="border:2px dashed #eee; border-radius:15px; padding:20px; text-align:center;">
-            <input type="file" id="imgIn" style="display:none;" accept="image/*">
-            <button class="btn" onclick="document.getElementById('imgIn').click()" style="background:#f9f9f9; border:1px solid #ddd;">📷 사진 첨부하기</button>
-            <div id="preview" style="margin-top:15px;"></div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn" style="flex:1; background:#eee;" onclick="location.href='/'">취소</button>
+            <button class="btn btn-green" style="flex:2;" onclick="submit()">등록하기</button>
         </div>
-        
-        <button class="btn" style="width:100%; margin-top:15px; background:#f5f5f5; color:#888;" onclick="history.back()">취소하고 돌아가기</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let b64 = "";
-        const user = JSON.parse(localStorage.getItem('cafeUser'));
+        let user = JSON.parse(localStorage.getItem('cafeUser'));
+        let imgData = "";
 
         if(!user) { alert("로그인이 필요합니다."); location.href='/'; }
-        else { document.getElementById('nickname').value = user.nickname; }
 
-        socket.on('load_all', data => {
-            document.getElementById('boardSelect').innerHTML = data.config.boards.map(b => `<option value="${b}">${b}</option>`).join('');
+        socket.on('load_all', d => {
+            const sel = document.getElementById('boardSel');
+            sel.innerHTML = d.config.boards.map(b => `<option value="${b}">${b}</option>`).join('');
         });
 
-        document.getElementById('imgIn').onchange = (e) => {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                b64 = ev.target.result;
-                document.getElementById('preview').innerHTML = `<img src="${b64}" style="max-width:100%; border-radius:10px; max-height:200px;">`;
-            };
-            reader.readAsDataURL(file);
-        };
+        function preview(input) {
+            const file = input.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    imgData = e.target.result;
+                    const img = document.getElementById('pvImg');
+                    img.src = imgData;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
 
-        function send() {
-            const content = document.getElementById('content').value.trim();
-            if(!content) return alert("내용을 입력해주세요.");
-            
-            socket.emit('new_post', { 
-                board: document.getElementById('boardSelect').value, 
-                nickname: user.nickname, 
-                content, 
-                image: b64,
-                profileImg: user.profileImg
+        function submit() {
+            const content = document.getElementById('content').value;
+            const board = document.getElementById('boardSel').value;
+            if(!content.trim()) return alert("내용을 입력하세요.");
+
+            socket.emit('new_post', {
+                nickname: user.nickname,
+                content: content,
+                board: board,
+                image: imgData
             });
-            alert("글이 등록되었습니다!");
+            alert("등록되었습니다!");
             location.href = '/';
         }
     </script>

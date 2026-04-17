@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>커뮤니티 카페</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -39,7 +39,8 @@
             <div id="postDetailView" style="display:none; padding:30px;">
                 <div onclick="closePost()" style="cursor:pointer; color:#888; margin-bottom:20px;">← 목록으로 돌아가기</div>
                 <div id="postDetailBody"></div>
-                <div id="postImgArea"></div> <div id="likeArea" style="margin-top:30px;"></div>
+                <div id="postImgArea"></div>
+                <div id="likeArea" style="margin-top:30px;"></div>
             </div>
         </section>
     </div>
@@ -105,7 +106,7 @@
                 if(me) { currentUser = me; localStorage.setItem('cafeUser', JSON.stringify(me)); }
             }
             renderAll(); 
-            if(currentPostId) renderPostDetail(currentPostId); // 상세보기 중이라면 갱신
+            if(currentPostId) renderPostDetail(currentPostId);
         });
 
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(currentPostId) renderPostDetail(currentPostId); });
@@ -160,10 +161,7 @@
             document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})">${isLiked?'❤️':'🤍'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
         }
 
-        function toggleLike(postId) { 
-            if(!currentUser) return alert("로그인하세요."); 
-            socket.emit('toggle_like', { postId, userId: currentUser.userId }); 
-        }
+        function toggleLike(postId) { if(!currentUser) return alert("로그인하세요."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
 
         function showProfileById(uId) {
             const u = allUsers.find(x => x.userId === uId);
