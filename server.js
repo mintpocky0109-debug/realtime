@@ -7,8 +7,8 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-    maxHttpBufferSize: 5e7,
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    maxHttpBufferSize: 5e7, 
+    cors: { origin: "*" } 
 });
 
 app.use(express.static(path.join(__dirname)));
@@ -18,13 +18,12 @@ const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
-// ⭐ 이 부분을 본인이 사용할 아이디로 정확히 수정하세요! (예: "myid123")
+// ⭐ 이 아이디로 가입하면 무조건 주인장이 됩니다. (본인 아이디로 수정 가능)
 const ADMIN_ID = "Mint_pocky"; 
 
 const loadJson = (file, defaultVal) => {
-    try {
-        return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : defaultVal;
-    } catch (e) { return defaultVal; }
+    try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : defaultVal; }
+    catch (e) { return defaultVal; }
 };
 
 let posts = loadJson(DATA_FILE, []);
@@ -33,42 +32,48 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     themeColor: "#2db400",
     cafeName: "☕ 카페 에스프레소",
     boards: ["자유게시판", "공지사항", "가입인사"],
-    ownerNick: null,
-    staffList: []
+    staffList: [] 
 });
 
-app.get('/write', (req, res) => {
-    res.sendFile(path.join(__dirname, 'write.html'));
-});
+// Render 배포용 라우팅
+app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
 
-// 회원가입
+// 회원가입 (중복 아이디 체크 + 프로필 초기화)
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
     
-    // 가입할 때 아이디가 ADMIN_ID면 주인장으로 저장
     let role = (userId === ADMIN_ID) ? "주인장" : "멤버";
-    const newUser = { userId, password, nickname, role };
+    const newUser = { 
+        userId, password, nickname, role,
+        profileImg: "", profileDesc: "반갑습니다!", bgImg: "" 
+    };
     users.push(newUser);
-    
-    if(role === "주인장") {
-        cafeConfig.ownerNick = nickname;
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
-    }
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
-// 로그인 (여기서 한 번 더 강제로 주인장 권한 부여)
+// 로그인 (권한 실시간 갱신)
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
-        // ⭐ 핵심: 데이터베이스에 상관없이 아이디가 일치하면 무조건 주인장으로 로그인됨
-        let finalRole = (user.userId === ADMIN_ID) ? "주인장" : user.role;
-        res.json({ success: true, user: { nickname: user.nickname, role: finalRole } });
-    } else {
-        res.json({ success: false, msg: "아이디 또는 비밀번호가 틀렸습니다." });
+        user.role = (user.userId === ADMIN_ID) ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버");
+        res.json({ success: true, user });
+    } else res.json({ success: false, msg: "정보가 올바르지 않습니다." });
+});
+
+// 내 프로필 업데이트
+app.post('/api/update-profile', (req, res) => {
+    const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
+    const user = users.find(u => u.userId === userId);
+    if (user) {
+        user.nickname = nickname;
+        user.profileImg = profileImg;
+        user.profileDesc = profileDesc;
+        user.bgImg = bgImg;
+        fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+        res.json({ success: true, user });
     }
 });
 
@@ -77,17 +82,11 @@ io.on('connection', (socket) => {
 
     socket.on('new_post', (data) => {
         const user = users.find(u => u.nickname === data.nickname);
-        // 글 쓸 때도 아이디를 다시 체크해서 역할 부여
-        let currentRole = "멤버";
-        if (user) {
-            currentRole = (user.userId === ADMIN_ID) ? "주인장" : user.role;
-        }
-        
         const newPost = { 
-            id: Date.now(), board: data.board, nickname: data.nickname, 
-            role: currentRole, content: data.content, 
-            image: data.image, time: new Date().toLocaleString(), 
-            likedBy: [], comments: [] 
+            id: Date.now(), ...data, 
+            role: user ? user.role : "멤버", 
+            profileImg: user ? user.profileImg : "",
+            time: new Date().toLocaleString(), likedBy: [], comments: [] 
         };
         posts.push(newPost);
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
@@ -97,20 +96,29 @@ io.on('connection', (socket) => {
     socket.on('new_comment', (data) => {
         const post = posts.find(p => p.id === data.postId);
         if(post) {
-            const commentObj = {
-                id: Date.now(), nickname: data.nickname,
-                content: data.content, time: new Date().toLocaleTimeString(),
-                replies: []
+            const user = users.find(u => u.nickname === data.nickname);
+            const commentObj = { 
+                id: Date.now(), nickname: data.nickname, 
+                profileImg: user ? user.profileImg : "",
+                content: data.content, time: new Date().toLocaleTimeString(), 
+                replies: [] 
             };
             if (data.parentId) {
                 const parent = post.comments.find(c => c.id === data.parentId);
                 if (parent) parent.replies.push(commentObj);
-            } else {
-                post.comments.push(commentObj);
-            }
+            } else post.comments.push(commentObj);
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
             io.emit('update_posts', posts);
         }
+    });
+
+    socket.on('update_config', (data) => {
+        const user = users.find(u => u.nickname === data.adminNick);
+        if (!user || (user.role !== '주인장' && user.role !== '점원')) return;
+        if (user.role === '점원') delete data.newConfig.staffList; // 점원은 점원관리 불가
+        cafeConfig = { ...cafeConfig, ...data.newConfig };
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+        io.emit('update_config', cafeConfig);
     });
 
     socket.on('like_post', (data) => {
@@ -125,5 +133,6 @@ io.on('connection', (socket) => {
     });
 });
 
+// Render 배포 핵심 설정
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Server is running on port ${PORT}`));
