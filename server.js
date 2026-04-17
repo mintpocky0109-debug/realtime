@@ -47,7 +47,6 @@ app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
-        // 등급 최신화
         if (user.userId === "Mint_pocky") user.role = "주인장";
         else if (cafeConfig.staffList.includes(user.userId)) user.role = "점원";
         else user.role = "멤버";
@@ -70,12 +69,11 @@ app.post('/api/update-profile', (req, res) => {
     } else res.json({ success: false, message: "유저를 찾을 수 없습니다." });
 });
 
-// [관리자] 점원 고용/해제 및 강퇴
+// 관리자 기능
 app.post('/api/admin/manage-user', (req, res) => {
     const { adminId, targetId, action } = req.body;
     const admin = users.find(u => u.userId === adminId);
     if (!admin || (admin.role !== '주인장' && admin.role !== '점원')) return res.json({ success: false, message: "권한이 없습니다." });
-
     const targetIdx = users.findIndex(u => u.userId === targetId);
     if (targetIdx === -1) return res.json({ success: false, message: "대상을 찾을 수 없습니다." });
 
@@ -88,7 +86,6 @@ app.post('/api/admin/manage-user', (req, res) => {
         users.splice(targetIdx, 1);
         cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId);
     }
-
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
     io.emit('update_users', users);
@@ -97,7 +94,31 @@ app.post('/api/admin/manage-user', (req, res) => {
 
 io.on('connection', (socket) => {
     socket.emit('load_all', { posts, config: cafeConfig, users });
-    // ... 기타 소켓 로직 (글쓰기 등) 동일
+
+    // 글쓰기 로직 복구
+    socket.on('new_post', (data) => {
+        const user = users.find(u => u.nickname === data.nickname);
+        const newPost = { 
+            id: Date.now(), ...data, 
+            time: new Date().toLocaleString(), 
+            likedBy: [], comments: [] 
+        };
+        posts.push(newPost);
+        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+        io.emit('update_posts', posts);
+    });
+
+    socket.on('toggle_like', ({ postId, userId }) => {
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+            if (!post.likedBy) post.likedBy = [];
+            const idx = post.likedBy.indexOf(userId);
+            if (idx === -1) post.likedBy.push(userId);
+            else post.likedBy.splice(idx, 1);
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            io.emit('update_posts', posts);
+        }
+    });
 });
 
 server.listen(3000, "0.0.0.0", () => console.log("Server running"));
