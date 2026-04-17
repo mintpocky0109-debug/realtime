@@ -21,7 +21,7 @@ socket.on('new_post', (data) => {
         const messageData = {
             nickname: data.nickname,
             content: data.content,
-            time: new Date().toLocaleTimeString() 
+            time: new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' })
         };
         io.emit('show_post', messageData);
     });
