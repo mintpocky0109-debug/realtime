@@ -7,12 +7,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="settings-icon" onclick="toggleSettings()">⚙️</div>
+
     <div class="cafe-header">
         <h1 onclick="location.href='/'">🚀 우리들의 비밀 커뮤니티</h1>
     </div>
 
     <div class="notice-banner">
-        <strong>📢 공지사항:</strong> 관리자 닉네임은 보호받으며, 즐거운 소통 문화를 지향합니다.
+        <strong>📢 공지:</strong> 주인장과 점원의 안내에 따라 즐거운 커뮤니티를 만들어주세요.
     </div>
 
     <div class="control-bar">
@@ -21,14 +23,39 @@
 
     <div id="board"></div>
 
-    <footer>
-        <p>© 2026 우리 커뮤니티. All rights reserved.</p>
-    </footer>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h3>🛠️ 카페 관리 설정</h3>
+            <p style="font-size: 12px; color: #888;">특정 유저에게 역할을 부여합니다.</p>
+            <input id="targetNick" class="input-field" type="text" placeholder="대상 닉네임">
+            <select id="roleSelect" class="input-field">
+                <option value="멤버">멤버 (일반)</option>
+                <option value="점원">점원 (부관리자)</option>
+                <option value="주인장">주인장 (관리자)</option>
+            </select>
+            <button onclick="applyRole()" style="background:var(--naver-green); color:white; border:none; padding:10px; width:100%; border-radius:4px; font-weight:bold; cursor:pointer;">설정 적용</button>
+            <button onclick="toggleSettings()" style="background:#444; color:white; border:none; padding:10px; width:100%; border-radius:4px; margin-top:5px; cursor:pointer;">닫기</button>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const board = document.getElementById('board');
+
+        function toggleSettings() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function applyRole() {
+            const nick = document.getElementById('targetNick').value;
+            const role = document.getElementById('roleSelect').value;
+            if(!nick) return alert("닉네임을 입력하세요");
+            socket.emit('change_role', { targetNick: nick, newRole: role });
+            alert(nick + " 님이 " + role + "(으)로 설정되었습니다.");
+            toggleSettings();
+        }
 
         socket.on('load_history', (history) => {
             board.innerHTML = '';
@@ -42,13 +69,21 @@
             post.className = 'post';
             const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
             
-            // 역할이 관리자일 경우 배지 추가
-            const roleBadge = data.role === '관리자' ? `<span class="badge-admin">관리자</span>` : "";
+            let roleBadge = "";
+            let nickColor = "";
+
+            if(data.role === '주인장') {
+                roleBadge = `<span class="badge-admin">👑 주인장</span>`;
+                nickColor = "color: #ffcc00;";
+            } else if(data.role === '점원') {
+                roleBadge = `<span class="badge-staff">☕ 점원</span>`;
+                nickColor = "color: #00ffcc;";
+            }
 
             post.innerHTML = `
                 <div class="post-header">
                     <div>
-                        <span class="post-nickname">${data.nickname}</span>
+                        <span class="post-nickname" style="${nickColor}">${data.nickname}</span>
                         ${roleBadge}
                     </div>
                     <span class="post-time">${data.time}</span>
