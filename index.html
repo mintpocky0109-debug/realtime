@@ -6,21 +6,38 @@
     <title>커뮤니티 카페</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* 추가 스타일 */
         .profile-small { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; background: #eee; border: 1px solid #ddd; }
-        .settings-icon { cursor: pointer; font-size: 26px; margin-top: 20px; color: #888; display: inline-block; transition: 0.3s; }
+        .settings-icon { cursor: pointer; font-size: 26px; margin-top: 20px; color: #888; transition: 0.3s; }
         .settings-icon:hover { color: #333; transform: rotate(90deg); }
+        
+        /* 설정 탭 스타일 */
+        .settings-tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+        .s-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-weight: bold; }
+        .s-tab.active { color: #2db400; border-bottom: 2px solid #2db400; }
+        .s-content { display: none; }
+        .s-content.active { display: block; }
+
+        /* 유저 리스트 스타일 */
+        .user-manage-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f9f9f9; }
+        .user-manage-item img { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; }
+        .staff-toggle-btn { margin-left: auto; padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; border: 1px solid #ddd; }
+        .staff-toggle-btn.is-staff { background: #ffa502; color: white; border: none; }
+
+        /* 토스트 알림 */
+        #toast { fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 9999; pointer-events: none; }
+        #toast.show { opacity: 1; bottom: 40px; }
+
         .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
         .badge-owner { background: #ff4757; color: white; }
         .badge-staff { background: #ffa502; color: white; }
-        .badge-member { background: #eee; color: #666; }
-        .comment-item { padding: 15px; border-bottom: 1px solid #f1f1f1; }
-        .reply-item { margin-left: 40px; margin-top: 10px; padding: 12px; background: #f9f9f9; border-radius: 10px; border-left: 4px solid #2db400; }
-        .reply-btn { font-size: 11px; color: #2db400; cursor: pointer; margin-left: 10px; font-weight: bold; }
-        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow:hidden; }
         .prof-preview { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-top: -40px; margin-left: 20px; object-fit: cover; background: #fff; cursor: pointer; }
     </style>
 </head>
 <body>
+    <div id="toast">저장되었습니다.</div>
+
     <header class="header">
         <h1 id="cafeName" style="cursor:pointer;" onclick="location.reload()">☕ 카페</h1>
         <div id="headerAuth"></div>
@@ -34,69 +51,58 @@
                 <div class="settings-icon" onclick="openSettings()">⚙️</div>
             </div>
         </nav>
-
         <section class="content">
             <div id="listView" style="padding:30px;"><h2 id="currentBoardTitle">전체보기</h2><div id="postList"></div></div>
             <div id="postDetailView" style="display:none; padding:40px; background:white;">
                 <div style="cursor:pointer; color:#888; margin-bottom:20px;" onclick="closePost()">← 목록으로</div>
                 <div id="postDetailBody"></div>
-                <div class="comment-section" style="margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
-                    <h4 id="commentCountTitle">댓글</h4>
-                    <div id="commentList"></div>
-                    <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
-                        <input id="commentInput" type="text" placeholder="댓글 입력..." class="input-style" style="margin:0;">
-                        <button class="btn btn-green" onclick="submitComment()">등록</button>
-                    </div>
+                <div id="commentList"></div>
+                <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
+                    <input id="commentInput" type="text" placeholder="댓글 입력..." class="input-style" style="margin:0;">
+                    <button class="btn btn-green" onclick="submitComment()">등록</button>
                 </div>
             </div>
         </section>
     </div>
 
     <div id="settingsModal" class="modal">
-        <div style="background:white; width:450px; border-radius:20px; padding:30px; max-height:85vh; overflow-y:auto;">
-            <h3>⚙️ 프로필 및 카페 설정</h3>
-            <div id="setBgPreview" class="bg-preview" onclick="document.getElementById('bgFile').click()">배경 사진 선택</div>
-            <img id="setProfPreview" class="prof-preview" onclick="document.getElementById('profFile').click()">
-            <input type="file" id="bgFile" style="display:none;" accept="image/*" onchange="previewImage(this, 'setBgPreview')">
-            <input type="file" id="profFile" style="display:none;" accept="image/*" onchange="previewImage(this, 'setProfPreview')">
-            
-            <div style="margin-top:15px;">
-                <label style="font-size:12px; color:#888;">닉네임</label>
-                <input type="text" id="setNickInput" class="input-style">
-                <label style="font-size:12px; color:#888;">자기소개</label>
-                <textarea id="setDescInput" class="input-style" style="height:60px;"></textarea>
+        <div style="background:white; width:480px; border-radius:20px; padding:25px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div class="settings-tabs">
+                <div class="s-tab active" onclick="changeSTab(0, this)">내 프로필</div>
+                <div id="adminTab" class="s-tab" style="display:none;" onclick="changeSTab(1, this)">카페 설정</div>
+                <div id="staffTab" class="s-tab" style="display:none;" onclick="changeSTab(2, this)">유저/점원 관리</div>
             </div>
-            <button class="btn btn-green" style="width:100%;" onclick="saveMyProfile()">설정 저장</button>
 
-            <div id="adminSettings" style="display:none; margin-top:25px; border-top:2px solid #eee; padding-top:20px;">
-                <h4>🛡️ 카페 관리</h4>
-                <input type="text" id="setCafeNameInput" placeholder="카페 이름" class="input-style">
-                <div id="staffManageArea">
-                    <input type="text" id="setStaffInput" placeholder="점원 닉네임 (쉼표 구분)" class="input-style">
+            <div style="flex:1; overflow-y:auto; padding-right:5px;">
+                <div id="s-content-0" class="s-content active">
+                    <div id="setBgPreview" class="bg-preview" onclick="document.getElementById('bgFile').click()">배경 사진 선택</div>
+                    <img id="setProfPreview" class="prof-preview" onclick="document.getElementById('profFile').click()">
+                    <input type="file" id="bgFile" style="display:none;" accept="image/*" onchange="previewImg(this, 'setBgPreview')">
+                    <input type="file" id="profFile" style="display:none;" accept="image/*" onchange="previewImg(this, 'setProfPreview')">
+                    <input type="text" id="setNickInput" placeholder="닉네임" class="input-style" style="margin-top:15px;">
+                    <textarea id="setDescInput" placeholder="자기소개" class="input-style" style="height:60px;"></textarea>
+                    <button class="btn btn-green" style="width:100%;" onclick="saveMyProfile()">프로필 저장</button>
                 </div>
-                <button class="btn" style="width:100%; background:orange; color:white;" onclick="saveCafeConfig()">카페 설정 저장</button>
-            </div>
-            <button class="btn" style="width:100%; margin-top:10px; background:#f5f5f5;" onclick="closeSettings()">닫기</button>
-        </div>
-    </div>
 
-    <div id="profileModal" class="modal">
-        <div style="width:380px; background:white; border-radius:20px; overflow:hidden;">
-            <div id="profViewBg" style="height:140px; background-size:cover; background-position:center; background-color: #ddd;"></div>
-            <div style="padding:20px; text-align:center;">
-                <img id="profViewImg" style="width:90px; height:90px; border-radius:50%; border:4px solid white; margin-top:-60px; object-fit:cover; background:#fff;">
-                <h2 id="profViewNick" style="margin:10px 0 5px 0;"></h2>
-                <div id="profViewRole" class="badge"></div>
-                <p id="profViewDesc" style="color:#666; font-size:14px; margin-top:10px;"></p>
-                <div id="profViewPosts" style="text-align:left; margin-top:20px; max-height:150px; overflow-y:auto;"></div>
-                <button class="btn" style="width:100%; margin-top:15px;" onclick="document.getElementById('profileModal').style.display='none'">닫기</button>
+                <div id="s-content-1" class="s-content">
+                    <label style="font-size:12px; color:#888;">카페 이름</label>
+                    <input type="text" id="setCafeNameInput" class="input-style">
+                    <button class="btn" style="width:100%; background:orange; color:white;" onclick="saveCafeConfig()">카페 정보 저장</button>
+                </div>
+
+                <div id="s-content-2" class="s-content">
+                    <p style="font-size:12px; color:#888; margin-bottom:10px;">가입한 유저 목록 (클릭하여 점원 임명/해제)</p>
+                    <div id="userManageList"></div>
+                </div>
             </div>
+            
+            <button class="btn" style="width:100%; margin-top:20px; background:#f5f5f5;" onclick="closeSettings()">닫기</button>
         </div>
     </div>
 
     <div id="loginModal" class="modal">
         <div style="background:white; width:300px; border-radius:20px; padding:25px;">
-            <div style="display:flex; margin-bottom:15px; text-align:center; border-bottom:1px solid #eee;">
+            <div style="display:flex; margin-bottom:15px; border-bottom:1px solid #eee;">
                 <div id="tabL" style="flex:1; cursor:pointer; padding-bottom:10px; color:#2db400; font-weight:bold;" onclick="toggleAuthTab('login')">로그인</div>
                 <div id="tabS" style="flex:1; cursor:pointer; padding-bottom:10px; color:#aaa;" onclick="toggleAuthTab('signup')">회원가입</div>
             </div>
@@ -121,8 +127,16 @@
             }
             renderAll(); 
         });
+
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(openedPostId) renderPostDetail(openedPostId); });
-        socket.on('update_config', c => { cafeConfig = c; renderAll(); });
+        socket.on('update_config', c => { cafeConfig = c; showToast("카페 설정이 실시간으로 업데이트되었습니다."); renderAll(); });
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
 
         function renderAll() {
             document.getElementById('cafeName').innerText = cafeConfig.cafeName;
@@ -136,17 +150,103 @@
             const h = document.getElementById('headerAuth');
             if(currentUser) {
                 const bClass = currentUser.role === '주인장' ? 'badge-owner' : (currentUser.role === '점원' ? 'badge-staff' : 'badge-member');
-                h.innerHTML = `
-                    <img src="${currentUser.profileImg || ''}" class="profile-small" onerror="this.src='https://via.placeholder.com/32'">
-                    <span class="user-nick-click" onclick="openProfile('${currentUser.nickname}')">${currentUser.nickname}님</span>
-                    <span class="badge ${bClass}">${currentUser.role}</span>
-                    <button class="btn" style="margin-left:10px;" onclick="logout()">로그아웃</button>
-                `;
+                h.innerHTML = `<img src="${currentUser.profileImg || ''}" class="profile-small" onerror="this.src='https://via.placeholder.com/32'">
+                    <span style="font-weight:bold; cursor:pointer;">${currentUser.nickname}</span><span class="badge ${bClass}">${currentUser.role}</span>
+                    <button class="btn" style="margin-left:10px;" onclick="logout()">로그아웃</button>`;
                 document.getElementById('sideExtra').style.display = 'block';
                 document.getElementById('commentInputArea').style.display = 'flex';
             } else {
                 h.innerHTML = `<button class="btn btn-green" onclick="openLogin()">로그인 / 가입</button>`;
                 document.getElementById('sideExtra').style.display = 'none';
+            }
+        }
+
+        function changeSTab(idx, el) {
+            document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.s-content').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById(`s-content-${idx}`).classList.add('active');
+        }
+
+        function openSettings() {
+            if(!currentUser) return;
+            // 초기 탭 설정
+            changeSTab(0, document.querySelectorAll('.s-tab')[0]);
+            
+            const bgP = document.getElementById('setBgPreview');
+            bgP.style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
+            bgP.innerText = currentUser.bgImg ? '' : '배경 사진 선택';
+            document.getElementById('setProfPreview').src = currentUser.profileImg || 'https://via.placeholder.com/80';
+            document.getElementById('setNickInput').value = currentUser.nickname;
+            document.getElementById('setDescInput').value = currentUser.profileDesc || "";
+
+            if(currentUser.role === '주인장' || currentUser.role === '점원') {
+                document.getElementById('adminTab').style.display = 'block';
+                document.getElementById('setCafeNameInput').value = cafeConfig.cafeName;
+                if(currentUser.role === '주인장') {
+                    document.getElementById('staffTab').style.display = 'block';
+                    renderUserManageList();
+                }
+            }
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function renderUserManageList() {
+            const list = document.getElementById('userManageList');
+            // 본인(주인장) 제외 유저 리스트
+            const others = allUsers.filter(u => u.userId !== currentUser.userId);
+            list.innerHTML = others.map(u => {
+                const isStaff = cafeConfig.staffList.includes(u.nickname);
+                return `
+                    <div class="user-manage-item">
+                        <img src="${u.profileImg || 'https://via.placeholder.com/30'}">
+                        <span style="font-size:14px;">${u.nickname}</span>
+                        <button class="staff-toggle-btn ${isStaff?'is-staff':''}" onclick="toggleStaff('${u.nickname}')">
+                            ${isStaff ? '점원 해제' : '점원 임명'}
+                        </button>
+                    </div>
+                `;
+            }).join('') || '<p style="text-align:center; padding:20px; color:#ccc;">다른 유저가 없습니다.</p>';
+        }
+
+        function toggleStaff(nick) {
+            let newList = [...cafeConfig.staffList];
+            if(newList.includes(nick)) newList = newList.filter(n => n !== nick);
+            else newList.push(nick);
+            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { staffList: newList } });
+            showToast(`${nick}님의 권한이 변경되었습니다.`);
+            // 실시간 반영을 위해 리스트 재랜더링 (서버 응답 전 로컬 업데이트)
+            cafeConfig.staffList = newList;
+            renderUserManageList();
+        }
+
+        async function saveMyProfile() {
+            const bgData = document.getElementById('setBgPreview').style.backgroundImage.slice(5, -2).replace(/"/g, "");
+            const profData = document.getElementById('setProfPreview').src;
+            const upd = { 
+                userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, 
+                profileImg: profData, bgImg: bgData, profileDesc: document.getElementById('setDescInput').value 
+            };
+            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
+            if((await res.json()).success) { showToast("프로필이 저장되었습니다."); setTimeout(() => location.reload(), 1000); }
+        }
+
+        function saveCafeConfig() {
+            const newName = document.getElementById('setCafeNameInput').value;
+            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig: { cafeName: newName } });
+            showToast("카페 정보가 저장되었습니다.");
+        }
+
+        function previewImg(input, tid) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const t = document.getElementById(tid);
+                    if(tid === 'setBgPreview') { t.style.backgroundImage = `url(${e.target.result})`; t.innerText = ''; }
+                    else t.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         }
 
@@ -159,166 +259,26 @@
                     <div style="font-weight:bold;">${p.content.substring(0,35)}</div>
                     <div style="font-size:12px; color:#888; margin-top:8px;">
                         <img src="${p.profileImg || ''}" class="profile-small" onerror="this.src='https://via.placeholder.com/32'">
-                        <span class="user-nick-click" onclick="event.stopPropagation(); openProfile('${p.nickname}')">${p.nickname}</span> · 댓글 ${countComments(p)}
+                        ${p.nickname} · 댓글 ${p.comments.length}
                     </div>
                 </div>
             `).join('');
         }
 
-        function countComments(p) {
-            let c = p.comments.length;
-            p.comments.forEach(com => c += (com.replies ? com.replies.length : 0));
-            return c;
-        }
-
-        function renderPostDetail(id) {
-            const post = allPosts.find(p => p.id === id);
-            if(!post) return;
-            const bClass = post.role === '주인장' ? 'badge-owner' : (post.role === '점원' ? 'badge-staff' : 'badge-member');
-            
-            document.getElementById('postDetailBody').innerHTML = `
-                <h2 style="margin-bottom:10px;">${post.content.substring(0,25)}...</h2>
-                <div style="margin-bottom:20px; display:flex; align-items:center;">
-                    <img src="${post.profileImg || ''}" class="profile-small" style="width:40px; height:40px;" onerror="this.src='https://via.placeholder.com/40'">
-                    <div>
-                        <div class="user-nick-click" onclick="openProfile('${post.nickname}')" style="font-weight:bold;">${post.nickname} <span class="badge ${bClass}">${post.role}</span></div>
-                        <div style="color:#aaa; font-size:12px;">${post.time}</div>
-                    </div>
-                </div>
-                <div style="font-size:16px; line-height:1.7; white-space:pre-wrap;">${post.content}</div>
-                ${post.image ? `<img src="${post.image}" style="max-width:100%; margin-top:20px; border-radius:15px;">` : ""}
-                <div style="text-align:center; margin-top:40px;">
-                    <button class="btn" style="border:1px solid #ddd; background:#fff" onclick="toggleLike(${post.id})">☕ 커피 ${post.likedBy.length}</button>
-                </div>
-            `;
-
-            let html = "";
-            post.comments.forEach(com => {
-                html += `
-                    <div class="comment-item">
-                        <div style="font-weight:bold; font-size:13px;">
-                            <img src="${com.profileImg || ''}" class="profile-small" style="width:24px; height:24px;" onerror="this.src='https://via.placeholder.com/24'">
-                            ${com.nickname} <span style="font-weight:normal; color:#aaa; margin-left:10px;">${com.time}</span>
-                        </div>
-                        <div style="margin:8px 0 8px 32px;">${com.content}</div>
-                        <span class="reply-btn" onclick="toggleReplyInput(${com.id})">답글</span>
-                        <div id="replyBox-${com.id}" style="display:none; margin-top:10px; gap:5px;">
-                            <input type="text" id="replyIn-${com.id}" class="input-style" placeholder="답글..." style="margin:0; flex:1;">
-                            <button class="btn btn-green" onclick="submitComment(${com.id})">등록</button>
-                        </div>
-                    </div>
-                `;
-                if(com.replies) com.replies.forEach(rep => {
-                    html += `<div class="reply-item">
-                        <div style="font-weight:bold; font-size:12px;">
-                            <img src="${rep.profileImg || ''}" class="profile-small" style="width:20px; height:20px;" onerror="this.src='https://via.placeholder.com/20'">
-                            ${rep.nickname} <span style="font-weight:normal; color:#aaa; margin-left:8px;">${rep.time}</span>
-                        </div>
-                        <div style="margin:5px 0 0 28px;">${rep.content}</div>
-                    </div>`;
-                });
-            });
-            document.getElementById('commentList').innerHTML = html || '<p style="text-align:center; color:#ccc;">댓글이 없습니다.</p>';
-            document.getElementById('commentCountTitle').innerText = `댓글 ${countComments(post)}`;
-        }
-
-        // 이미지 관련 로직
-        function previewImage(input, targetId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const target = document.getElementById(targetId);
-                    if (targetId === 'setBgPreview') {
-                        target.style.backgroundImage = `url(${e.target.result})`;
-                        target.innerText = '';
-                    } else { target.src = e.target.result; }
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        async function saveMyProfile() {
-            if(!currentUser) return;
-            const bgData = document.getElementById('setBgPreview').style.backgroundImage.slice(5, -2).replace(/"/g, "");
-            const profData = document.getElementById('setProfPreview').src;
-            const upd = { 
-                userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, 
-                profileImg: profData.startsWith('data:') ? profData : currentUser.profileImg, 
-                bgImg: bgData.startsWith('data:') ? bgData : currentUser.bgImg,
-                profileDesc: document.getElementById('setDescInput').value 
-            };
-            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
-            if((await res.json()).success) { alert("저장됨!"); location.reload(); }
-        }
-
-        function openSettings() {
-            if(!currentUser) return;
-            const bgP = document.getElementById('setBgPreview');
-            if(currentUser.bgImg) { bgP.style.backgroundImage = `url(${currentUser.bgImg})`; bgP.innerText = ''; }
-            else { bgP.style.backgroundImage = 'none'; bgP.innerText = '배경 사진 선택'; }
-            document.getElementById('setProfPreview').src = currentUser.profileImg || 'https://via.placeholder.com/80';
-            document.getElementById('setNickInput').value = currentUser.nickname;
-            document.getElementById('setDescInput').value = currentUser.profileDesc || "";
-            if(currentUser.role === '주인장' || currentUser.role === '점원') {
-                document.getElementById('adminSettings').style.display = 'block';
-                document.getElementById('setCafeNameInput').value = cafeConfig.cafeName;
-                document.getElementById('setStaffInput').value = cafeConfig.staffList.join(', ');
-                document.getElementById('staffManageArea').style.display = (currentUser.role === '주인장') ? 'block' : 'none';
-            }
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
-        // ... 나머지 handleAuth, openProfile, toggleLike 등 기존 기능 함수들 ...
-        function toggleReplyInput(id) { const el = document.getElementById(`replyBox-${id}`); el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; }
-        function submitComment(parentId = null) {
-            const inputId = parentId ? `replyIn-${parentId}` : 'commentInput';
-            const content = document.getElementById(inputId).value.trim();
-            if(!content || !currentUser) return;
-            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content, parentId });
-            document.getElementById(inputId).value = "";
-        }
-        function saveCafeConfig() {
-            const newConfig = { cafeName: document.getElementById('setCafeNameInput').value };
-            if(currentUser.role === '주인장') newConfig.staffList = document.getElementById('setStaffInput').value.split(',').map(s => s.trim()).filter(s => s);
-            socket.emit('update_config', { adminNick: currentUser.nickname, newConfig });
-            alert("카페 설정됨!");
-        }
-        function openProfile(nick) {
-            const u = allUsers.find(user => user.nickname === nick);
-            if(!u) return;
-            document.getElementById('profViewBg').style.backgroundImage = `url(${u.bgImg || ''})`;
-            document.getElementById('profViewImg').src = u.profileImg || 'https://via.placeholder.com/90';
-            document.getElementById('profViewNick').innerText = u.nickname;
-            document.getElementById('profViewRole').innerText = u.role;
-            document.getElementById('profViewDesc').innerText = u.profileDesc || "소개가 없습니다.";
-            const posts = allPosts.filter(p => p.nickname === nick);
-            document.getElementById('profViewPosts').innerHTML = posts.map(p => `<div onclick="closeProfile(); openPost(${p.id})" style="padding:8px; border-bottom:1px solid #eee; cursor:pointer; font-size:13px;">• ${p.content.substring(0,20)}...</div>`).join('');
-            document.getElementById('profileModal').style.display = 'flex';
-        }
+        // 기존 필수 기능들
+        function openPost(id) { openedPostId = id; document.getElementById('listView').style.display = 'none'; document.getElementById('postDetailView').style.display = 'block'; renderPostDetail(id); }
+        function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
         async function handleAuth() {
             const userId = document.getElementById('authId').value, password = document.getElementById('authPw').value, nickname = document.getElementById('authNick').value;
             const url = authMode === 'login' ? '/api/login' : '/api/signup';
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, password, nickname }) });
             const data = await res.json();
-            if(data.success) { if(authMode === 'login') { currentUser = data.user; localStorage.setItem('cafeUser', JSON.stringify(currentUser)); location.reload(); } else { alert("가입됨! 로그인하세요."); toggleAuthTab('login'); } }
-            else alert(data.msg);
+            if(data.success) { if(authMode === 'login') { currentUser = data.user; localStorage.setItem('cafeUser', JSON.stringify(currentUser)); location.reload(); } else { alert("가입됨!"); toggleAuthTab('login'); } } else alert(data.msg);
         }
-        function toggleAuthTab(m) {
-            authMode = m;
-            document.getElementById('tabL').style.color = m === 'login' ? '#2db400' : '#aaa';
-            document.getElementById('tabS').style.color = m === 'signup' ? '#2db400' : '#aaa';
-            document.getElementById('authNick').style.display = m === 'signup' ? 'block' : 'none';
-            document.getElementById('authBtn').innerText = m === 'login' ? '로그인' : '회원가입';
-        }
-        function filterBoard(n, el) { document.querySelectorAll('.board-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); document.getElementById('currentBoardTitle').innerText = n; closePost(); renderPosts(); }
-        function openPost(id) { openedPostId = id; document.getElementById('listView').style.display = 'none'; document.getElementById('postDetailView').style.display = 'block'; renderPostDetail(id); window.scrollTo(0,0); }
-        function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
-        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
+        function toggleAuthTab(m) { authMode = m; document.getElementById('authNick').style.display = m === 'signup' ? 'block' : 'none'; }
         function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
-        function closeProfile() { document.getElementById('profileModal').style.display = 'none'; }
         function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-        function toggleLike(postId) { if(!currentUser) return alert("로그인 필요"); socket.emit('like_post', { postId, nickname: currentUser.nickname }); }
+        function filterBoard(n, el) { document.querySelectorAll('.board-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); document.getElementById('currentBoardTitle').innerText = n; closePost(); renderPosts(); }
     </script>
 </body>
 </html>
