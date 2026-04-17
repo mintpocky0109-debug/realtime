@@ -15,27 +15,33 @@ const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
-const loadJson = (file, def) => { try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : def; } catch { return def; } };
+// JSON 로드 유틸리티
+const loadJson = (file, def) => { 
+    try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : def; } 
+    catch { return def; } 
+};
 
 let posts = loadJson(DATA_FILE, []);
 let users = loadJson(USER_FILE, []);
 let cafeConfig = loadJson(CONFIG_FILE, { cafeName: "☕ 카페 에스프레소", boards: ["자유게시판", "공지사항", "가입인사"], staffList: [] });
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
-
-// 2번 요청: 회원가입 시 빈칸 및 중복 검증
+// 회원가입
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
-    if (!userId || !password || !nickname) return res.json({ success: false, message: "모든 정보를 입력해주세요." });
-    if (users.some(u => u.userId === userId)) return res.json({ success: false, message: "이미 있는 아이디입니다." });
-    if (users.some(u => u.nickname === nickname)) return res.json({ success: false, message: "이미 있는 닉네임입니다." });
-
-    users.push({ userId, password, nickname, role: userId === "Mint_pocky" ? "주인장" : "멤버", profileImg: "", profileDesc: "안녕하세요!", bgImg: "" });
+    if (!userId || !password || !nickname) return res.json({ success: false, message: "모든 항목을 입력해주세요." });
+    if (users.some(u => u.userId === userId)) return res.json({ success: false, message: "이미 사용 중인 아이디입니다." });
+    if (users.some(u => u.nickname === nickname)) return res.json({ success: false, message: "이미 사용 중인 닉네임입니다." });
+    
+    users.push({ 
+        userId, password, nickname, 
+        role: userId === "Mint_pocky" ? "주인장" : "멤버", 
+        profileImg: "", profileDesc: "안녕하세요!", bgImg: "" 
+    });
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
+// 로그인
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
@@ -45,30 +51,55 @@ app.post('/api/login', (req, res) => {
     } else res.json({ success: false, message: "아이디 또는 비밀번호가 틀립니다." });
 });
 
-// 1번 요청: 프로필 저장 기능 수정
+// 프로필 수정 (핵심 해결 부분)
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
-    const idx = users.findIndex(u => u.userId === userId);
+    
+    if (!userId) return res.json({ success: false, message: "유저 아이디가 누락되었습니다." });
+
+    // 1. userId로 먼저 찾고, 없으면 nickname으로 검색 (안전장치)
+    let idx = users.findIndex(u => u.userId === userId);
+    if (idx === -1) idx = users.findIndex(u => u.nickname === nickname);
+    
     if (idx !== -1) {
-        // 본인 제외 닉네임 중복 체크
-        if(users.some((u, i) => u.nickname === nickname && i !== idx)) {
-            return res.json({ success: false, message: "이미 존재하는 닉네임입니다." });
-        }
-        users[idx] = { ...users[idx], nickname, profileImg, profileDesc, bgImg };
+        // 2. 닉네임 중복 체크 (본인 제외)
+        const isDup = users.some((u, i) => u.nickname === nickname && i !== idx);
+        if(isDup) return res.json({ success: false, message: "이미 사용 중인 닉네임입니다." });
+        
+        // 3. 데이터 업데이트
+        users[idx].nickname = nickname;
+        users[idx].profileImg = profileImg;
+        users[idx].profileDesc = profileDesc;
+        users[idx].bgImg = bgImg;
+
         fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+        
+        // 4. 전체 유저에게 업데이트 알림 (실시간 반영용)
+        io.emit('update_users', users);
+        
         res.json({ success: true, user: users[idx] });
-    } else res.json({ success: false, message: "유저를 찾을 수 없습니다." });
+    } else {
+        res.json({ success: false, message: "서버에서 해당 유저를 찾을 수 없습니다." });
+    }
 });
 
 io.on('connection', (socket) => {
     socket.emit('load_all', { posts, config: cafeConfig, users });
+
     socket.on('new_post', (data) => {
         const user = users.find(u => u.nickname === data.nickname);
-        const newPost = { id: Date.now(), ...data, role: user?user.role:"멤버", profileImg: user?user.profileImg:"", time: new Date().toLocaleString(), likedBy: [], comments: [] };
+        const newPost = { 
+            id: Date.now(), ...data, 
+            role: user ? user.role : "멤버", 
+            profileImg: user ? user.profileImg : "", 
+            time: new Date().toLocaleString(), 
+            likedBy: [], comments: [] 
+        };
         posts.push(newPost);
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
+
     socket.on('toggle_like', ({ postId, userId }) => {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -79,11 +110,6 @@ io.on('connection', (socket) => {
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
-    socket.on('update_config', (data) => {
-        cafeConfig = { ...cafeConfig, ...data.newConfig };
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
-        io.emit('update_config', cafeConfig);
-    });
 });
 
-server.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("Server running"));
+server.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("Server running on port 3000"));
