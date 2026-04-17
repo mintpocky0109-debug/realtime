@@ -16,8 +16,8 @@
         .comment-item { padding: 15px; border-bottom: 1px solid #f1f1f1; }
         .reply-item { margin-left: 40px; margin-top: 10px; padding: 12px; background: #f9f9f9; border-radius: 10px; border-left: 4px solid #2db400; }
         .reply-btn { font-size: 11px; color: #2db400; cursor: pointer; margin-left: 10px; font-weight: bold; }
-        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; }
-        .prof-preview { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-top: -40px; margin-left: 20px; object-fit: cover; background: #fff; }
+        .bg-preview { width: 100%; height: 120px; border-radius: 15px; background-size: cover; background-position: center; background-color: #eee; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .prof-preview { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; margin-top: -40px; margin-left: 20px; object-fit: cover; background: #fff; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -40,10 +40,10 @@
             <div id="postDetailView" style="display:none; padding:40px; background:white;">
                 <div style="cursor:pointer; color:#888; margin-bottom:20px;" onclick="closePost()">← 목록으로</div>
                 <div id="postDetailBody"></div>
-                <div class="comment-section" style="margin-top:40px; border-top:1px solid #eee; pt:20px;">
+                <div class="comment-section" style="margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
                     <h4 id="commentCountTitle">댓글</h4>
                     <div id="commentList"></div>
-                    <div id="commentInputArea" style="display:none; gap:10px; mt:20px;">
+                    <div id="commentInputArea" style="display:none; gap:10px; margin-top:20px;">
                         <input id="commentInput" type="text" placeholder="댓글 입력..." class="input-style" style="margin:0;">
                         <button class="btn btn-green" onclick="submitComment()">등록</button>
                     </div>
@@ -54,23 +54,29 @@
 
     <div id="settingsModal" class="modal">
         <div style="background:white; width:450px; border-radius:20px; padding:30px; max-height:85vh; overflow-y:auto;">
-            <h3>설정</h3>
-            <div id="setBgPreview" class="bg-preview"></div>
-            <img id="setProfPreview" class="prof-preview">
-            <input type="text" id="setProfInput" placeholder="프로필 이미지 URL" class="input-style">
-            <input type="text" id="setBgInput" placeholder="배경 이미지 URL" class="input-style">
-            <input type="text" id="setNickInput" placeholder="닉네임" class="input-style">
-            <textarea id="setDescInput" placeholder="자기소개" class="input-style"></textarea>
-            <button class="btn btn-green" style="width:100%;" onclick="saveMyProfile()">프로필 저장</button>
-            <div id="adminSettings" style="display:none; margin-top:20px; border-top:2px solid #eee; padding-top:20px;">
-                <h4>카페 관리</h4>
+            <h3>⚙️ 프로필 및 카페 설정</h3>
+            <div id="setBgPreview" class="bg-preview" onclick="document.getElementById('bgFile').click()">배경 사진 선택</div>
+            <img id="setProfPreview" class="prof-preview" onclick="document.getElementById('profFile').click()">
+            <input type="file" id="bgFile" style="display:none;" accept="image/*" onchange="previewImage(this, 'setBgPreview')">
+            <input type="file" id="profFile" style="display:none;" accept="image/*" onchange="previewImage(this, 'setProfPreview')">
+            
+            <div style="margin-top:15px;">
+                <label style="font-size:12px; color:#888;">닉네임</label>
+                <input type="text" id="setNickInput" class="input-style">
+                <label style="font-size:12px; color:#888;">자기소개</label>
+                <textarea id="setDescInput" class="input-style" style="height:60px;"></textarea>
+            </div>
+            <button class="btn btn-green" style="width:100%;" onclick="saveMyProfile()">설정 저장</button>
+
+            <div id="adminSettings" style="display:none; margin-top:25px; border-top:2px solid #eee; padding-top:20px;">
+                <h4>🛡️ 카페 관리</h4>
                 <input type="text" id="setCafeNameInput" placeholder="카페 이름" class="input-style">
                 <div id="staffManageArea">
                     <input type="text" id="setStaffInput" placeholder="점원 닉네임 (쉼표 구분)" class="input-style">
                 </div>
                 <button class="btn" style="width:100%; background:orange; color:white;" onclick="saveCafeConfig()">카페 설정 저장</button>
             </div>
-            <button class="btn" style="width:100%; margin-top:10px;" onclick="closeSettings()">닫기</button>
+            <button class="btn" style="width:100%; margin-top:10px; background:#f5f5f5;" onclick="closeSettings()">닫기</button>
         </div>
     </div>
 
@@ -120,7 +126,6 @@
 
         function renderAll() {
             document.getElementById('cafeName').innerText = cafeConfig.cafeName;
-            document.documentElement.style.setProperty('--naver-green', cafeConfig.themeColor);
             const list = document.getElementById('boardList');
             list.innerHTML = `<div class="board-item active" onclick="filterBoard('전체보기', this)">📋 전체보기</div>` + 
                 cafeConfig.boards.map(b => `<div class="board-item" onclick="filterBoard('${b}', this)">📋 ${b}</div>`).join('');
@@ -217,25 +222,42 @@
             document.getElementById('commentCountTitle').innerText = `댓글 ${countComments(post)}`;
         }
 
-        function toggleReplyInput(id) {
-            const el = document.getElementById(`replyBox-${id}`);
-            el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+        // 이미지 관련 로직
+        function previewImage(input, targetId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const target = document.getElementById(targetId);
+                    if (targetId === 'setBgPreview') {
+                        target.style.backgroundImage = `url(${e.target.result})`;
+                        target.innerText = '';
+                    } else { target.src = e.target.result; }
+                };
+                reader.readAsDataURL(file);
+            }
         }
 
-        function submitComment(parentId = null) {
-            const inputId = parentId ? `replyIn-${parentId}` : 'commentInput';
-            const content = document.getElementById(inputId).value.trim();
-            if(!content || !currentUser) return;
-            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content, parentId });
-            document.getElementById(inputId).value = "";
+        async function saveMyProfile() {
+            if(!currentUser) return;
+            const bgData = document.getElementById('setBgPreview').style.backgroundImage.slice(5, -2).replace(/"/g, "");
+            const profData = document.getElementById('setProfPreview').src;
+            const upd = { 
+                userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, 
+                profileImg: profData.startsWith('data:') ? profData : currentUser.profileImg, 
+                bgImg: bgData.startsWith('data:') ? bgData : currentUser.bgImg,
+                profileDesc: document.getElementById('setDescInput').value 
+            };
+            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
+            if((await res.json()).success) { alert("저장됨!"); location.reload(); }
         }
 
         function openSettings() {
             if(!currentUser) return;
-            document.getElementById('setBgPreview').style.backgroundImage = `url(${currentUser.bgImg})`;
+            const bgP = document.getElementById('setBgPreview');
+            if(currentUser.bgImg) { bgP.style.backgroundImage = `url(${currentUser.bgImg})`; bgP.innerText = ''; }
+            else { bgP.style.backgroundImage = 'none'; bgP.innerText = '배경 사진 선택'; }
             document.getElementById('setProfPreview').src = currentUser.profileImg || 'https://via.placeholder.com/80';
-            document.getElementById('setBgInput').value = currentUser.bgImg || "";
-            document.getElementById('setProfInput').value = currentUser.profileImg || "";
             document.getElementById('setNickInput').value = currentUser.nickname;
             document.getElementById('setDescInput').value = currentUser.profileDesc || "";
             if(currentUser.role === '주인장' || currentUser.role === '점원') {
@@ -247,19 +269,21 @@
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
-        async function saveMyProfile() {
-            const upd = { userId: currentUser.userId, nickname: document.getElementById('setNickInput').value, profileImg: document.getElementById('setProfInput').value, profileDesc: document.getElementById('setDescInput').value, bgImg: document.getElementById('setBgInput').value };
-            const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(upd) });
-            if((await res.json()).success) { alert("저장됨!"); location.reload(); }
+        // ... 나머지 handleAuth, openProfile, toggleLike 등 기존 기능 함수들 ...
+        function toggleReplyInput(id) { const el = document.getElementById(`replyBox-${id}`); el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; }
+        function submitComment(parentId = null) {
+            const inputId = parentId ? `replyIn-${parentId}` : 'commentInput';
+            const content = document.getElementById(inputId).value.trim();
+            if(!content || !currentUser) return;
+            socket.emit('new_comment', { postId: openedPostId, nickname: currentUser.nickname, content, parentId });
+            document.getElementById(inputId).value = "";
         }
-
         function saveCafeConfig() {
             const newConfig = { cafeName: document.getElementById('setCafeNameInput').value };
             if(currentUser.role === '주인장') newConfig.staffList = document.getElementById('setStaffInput').value.split(',').map(s => s.trim()).filter(s => s);
             socket.emit('update_config', { adminNick: currentUser.nickname, newConfig });
             alert("카페 설정됨!");
         }
-
         function openProfile(nick) {
             const u = allUsers.find(user => user.nickname === nick);
             if(!u) return;
@@ -272,7 +296,6 @@
             document.getElementById('profViewPosts').innerHTML = posts.map(p => `<div onclick="closeProfile(); openPost(${p.id})" style="padding:8px; border-bottom:1px solid #eee; cursor:pointer; font-size:13px;">• ${p.content.substring(0,20)}...</div>`).join('');
             document.getElementById('profileModal').style.display = 'flex';
         }
-
         async function handleAuth() {
             const userId = document.getElementById('authId').value, password = document.getElementById('authPw').value, nickname = document.getElementById('authNick').value;
             const url = authMode === 'login' ? '/api/login' : '/api/signup';
@@ -281,7 +304,6 @@
             if(data.success) { if(authMode === 'login') { currentUser = data.user; localStorage.setItem('cafeUser', JSON.stringify(currentUser)); location.reload(); } else { alert("가입됨! 로그인하세요."); toggleAuthTab('login'); } }
             else alert(data.msg);
         }
-
         function toggleAuthTab(m) {
             authMode = m;
             document.getElementById('tabL').style.color = m === 'login' ? '#2db400' : '#aaa';
@@ -289,7 +311,6 @@
             document.getElementById('authNick').style.display = m === 'signup' ? 'block' : 'none';
             document.getElementById('authBtn').innerText = m === 'login' ? '로그인' : '회원가입';
         }
-
         function filterBoard(n, el) { document.querySelectorAll('.board-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); document.getElementById('currentBoardTitle').innerText = n; closePost(); renderPosts(); }
         function openPost(id) { openedPostId = id; document.getElementById('listView').style.display = 'none'; document.getElementById('postDetailView').style.display = 'block'; renderPostDetail(id); window.scrollTo(0,0); }
         function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }

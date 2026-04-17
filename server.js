@@ -7,18 +7,19 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-    maxHttpBufferSize: 5e7, 
+    maxHttpBufferSize: 5e7, // 50MB 제한 (사진 업로드 대응)
     cors: { origin: "*" } 
 });
 
 app.use(express.static(path.join(__dirname)));
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
-// ⭐ 이 아이디로 가입하면 무조건 주인장이 됩니다. (본인 아이디로 수정 가능)
+// ⭐ 주인장 아이디 고정
 const ADMIN_ID = "Mint_pocky"; 
 
 const loadJson = (file, defaultVal) => {
@@ -35,10 +36,8 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     staffList: [] 
 });
 
-// Render 배포용 라우팅
 app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
 
-// 회원가입 (중복 아이디 체크 + 프로필 초기화)
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
@@ -53,17 +52,16 @@ app.post('/api/signup', (req, res) => {
     res.json({ success: true });
 });
 
-// 로그인 (권한 실시간 갱신)
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
+        // 로그인 시 실시간 권한 체크
         user.role = (user.userId === ADMIN_ID) ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버");
         res.json({ success: true, user });
     } else res.json({ success: false, msg: "정보가 올바르지 않습니다." });
 });
 
-// 내 프로필 업데이트
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
     const user = users.find(u => u.userId === userId);
@@ -115,7 +113,7 @@ io.on('connection', (socket) => {
     socket.on('update_config', (data) => {
         const user = users.find(u => u.nickname === data.adminNick);
         if (!user || (user.role !== '주인장' && user.role !== '점원')) return;
-        if (user.role === '점원') delete data.newConfig.staffList; // 점원은 점원관리 불가
+        if (user.role === '점원') delete data.newConfig.staffList;
         cafeConfig = { ...cafeConfig, ...data.newConfig };
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
         io.emit('update_config', cafeConfig);
@@ -133,6 +131,5 @@ io.on('connection', (socket) => {
     });
 });
 
-// Render 배포 핵심 설정
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => console.log(`Server is running on port ${PORT}`));
