@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>커뮤니티</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="/manifest.json"> 
 </head>
 <body>
     <div class="settings-icon" onclick="openSettings()">⚙️</div>
@@ -40,7 +39,7 @@
             </div>
             <div class="modal-body" id="menu-admin" style="flex:1; padding:30px; display:none;">
                 <h2>전체 삭제</h2>
-                <button onclick="socket.emit('clear_all', myNick)" style="background:red; color:white;" class="btn">모든 글 지우기</button>
+                <button onclick="clearBoard()" style="background:red; color:white;" class="btn">모든 글 지우기</button>
             </div>
         </div>
     </div>
@@ -60,18 +59,27 @@
         socket.on('update_config', c => {
             document.getElementById('cafeTitle').innerText = c.cafeName;
             document.documentElement.style.setProperty('--naver-green', c.themeColor);
-            document.documentElement.style.setProperty('--bg-main', c.bgColor);
         });
 
         socket.on('load_history', h => {
             const board = document.getElementById('board');
             board.innerHTML = '';
-            h.reverse().forEach(d => {
+            [...h].reverse().forEach(d => {
                 const p = document.createElement('div');
                 p.className = 'post';
-                p.style.cssText = "background:var(--bg-card); margin-bottom:10px; padding:20px; border-radius:12px;";
+                p.style.cssText = "background:var(--bg-card); margin-bottom:10px; padding:20px; border-radius:12px; position:relative;";
+                
+                const roleBadge = d.role === "주인장" ? `<span style="background:gold; color:black; padding:2px 5px; border-radius:4px; font-size:10px; margin-right:5px;">주인장</span>` : "";
                 const img = d.image ? `<img src="${d.image}" style="width:100%; border-radius:8px; margin-top:10px;">` : "";
-                p.innerHTML = `<b>${d.nickname}</b> <small style="color:#888;">${d.time}</small><br><div style="margin-top:8px;">${d.content}</div>${img}`;
+                
+                p.innerHTML = `
+                    <div style="display:flex; align-items:center; margin-bottom:8px;">
+                        ${roleBadge}<strong>${d.nickname}</strong>
+                        <small style="color:#888; margin-left:10px;">${d.time}</small>
+                    </div>
+                    <div style="white-space:pre-wrap;">${d.content}</div>
+                    ${img}
+                `;
                 board.appendChild(p);
             });
         });
@@ -79,6 +87,14 @@
         function saveSettings() {
             const color = document.getElementById('themePick').value;
             socket.emit('update_cafe_settings', { adminNick: myNick, settings: { themeColor: color } });
+            closeSettings();
+        }
+
+        function clearBoard() {
+            if(confirm("정말로 모든 글을 삭제하시겠습니까?")) {
+                socket.emit('clear_all', myNick);
+                closeSettings();
+            }
         }
     </script>
 </body>

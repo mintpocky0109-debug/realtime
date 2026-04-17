@@ -9,7 +9,7 @@
 <body style="background:var(--bg-card);">
     <div class="write-layout">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <button onclick="location.href='/'" style="background:none; border:none; color:white; font-size:20px;">✕</button>
+            <button onclick="location.href='/'" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✕</button>
             <button onclick="send()" class="btn btn-main">등록</button>
         </div>
 
@@ -33,7 +33,6 @@
 
         document.getElementById('nickname').value = localStorage.getItem('userNickname') || "";
 
-        // 엔터키 처리
         document.getElementById('content').addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && e.ctrlKey) {
                 e.preventDefault();
@@ -43,6 +42,7 @@
 
         document.getElementById('imgIn').onchange = (e) => {
             const file = e.target.files[0];
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 b64 = ev.target.result;
@@ -52,12 +52,17 @@
         };
 
         function send() {
-            const n = document.getElementById('nickname').value;
-            const c = document.getElementById('content').value;
-            if(!n || !c) return alert("내용을 입력해주세요.");
+            const n = document.getElementById('nickname').value.trim();
+            const c = document.getElementById('content').value.trim();
+            if(!n || !c) return alert("닉네임과 내용을 입력해주세요.");
+            
             localStorage.setItem('userNickname', n);
             socket.emit('new_post', { nickname: n, content: c, image: b64 });
-            location.href = '/';
+            
+            // 데이터 전송 완료를 위해 아주 짧은 대기 후 메인으로 이동
+            setTimeout(() => {
+                location.href = '/';
+            }, 100);
         }
     </script>
 </body>
