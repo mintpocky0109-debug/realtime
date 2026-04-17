@@ -8,8 +8,11 @@
 </head>
 <body>
     <div class="cafe-header">
-        <h1>🚀 우리들의 비밀 커뮤니티</h1>
-        <p>자유롭게 소통하고 사진을 공유하는 공간입니다. (실시간 업데이트 중)</p>
+        <h1 onclick="location.href='/'">🚀 우리들의 비밀 커뮤니티</h1>
+    </div>
+
+    <div class="notice-banner">
+        <strong>📢 공지사항:</strong> 비방이나 욕설이 담긴 게시글은 예고 없이 삭제될 수 있습니다. 즐거운 소통 되세요!
     </div>
 
     <div class="control-bar">
@@ -17,6 +20,10 @@
     </div>
 
     <div id="board"></div>
+
+    <footer>
+        <p>© 2026 우리 커뮤니티. All rights reserved.</p>
+    </footer>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -28,15 +35,12 @@
             history.forEach(data => renderPost(data));
         });
 
-        socket.on('show_post', (data) => {
-            renderPost(data);
-        });
+        socket.on('show_post', (data) => renderPost(data));
 
         function renderPost(data) {
             const post = document.createElement('div');
             post.className = 'post';
             const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
-            
             post.innerHTML = `
                 <div class="post-header">
                     <span class="post-nickname">${data.nickname}</span>

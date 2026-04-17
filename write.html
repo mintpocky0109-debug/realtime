@@ -9,7 +9,7 @@
 <body>
     <div class="write-container">
         <div class="write-box">
-            <div class="write-title">카페 글쓰기</div>
+            <div style="font-size: 22px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 15px;">카페 글쓰기</div>
             
             <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요">
             
@@ -23,7 +23,7 @@
             
             <div style="display:flex; gap:10px; justify-content: flex-end;">
                 <button onclick="location.href='/'" style="padding:12px 25px; border-radius:4px; cursor:pointer; background:#4f545c; color:white; border:none;">취소</button>
-                <button onclick="send()" style="padding:12px 40px; border-radius:4px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">등록하기</button>
+                <button id="sendBtn" onclick="send()" style="padding:12px 40px; border-radius:4px; cursor:pointer; background:var(--naver-green); color:white; border:none; font-weight:bold;">등록하기</button>
             </div>
         </div>
     </div>
@@ -32,6 +32,12 @@
     <script>
         const socket = io();
         let b64 = "";
+
+        // 닉네임 기억하기 기능
+        window.onload = () => {
+            const savedNick = localStorage.getItem('userNickname');
+            if (savedNick) document.getElementById('nickname').value = savedNick;
+        };
 
         document.getElementById('imageInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -49,6 +55,7 @@
             const nick = document.getElementById('nickname').value || '익명';
             const msg = document.getElementById('content').value;
             if(msg || b64) {
+                localStorage.setItem('userNickname', nick); // 닉네임 저장
                 socket.emit('new_post', { nickname: nick, content: msg, image: b64 });
                 alert("성공적으로 등록되었습니다!");
                 location.href = '/';
