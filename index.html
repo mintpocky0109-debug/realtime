@@ -12,7 +12,7 @@
     </div>
 
     <div class="notice-banner">
-        <strong>📢 공지사항:</strong> 비방이나 욕설이 담긴 게시글은 예고 없이 삭제될 수 있습니다. 즐거운 소통 되세요!
+        <strong>📢 공지사항:</strong> 관리자 닉네임은 보호받으며, 즐거운 소통 문화를 지향합니다.
     </div>
 
     <div class="control-bar">
@@ -41,9 +41,16 @@
             const post = document.createElement('div');
             post.className = 'post';
             const imgHtml = data.image ? `<img class="post-image" src="${data.image}">` : "";
+            
+            // 역할이 관리자일 경우 배지 추가
+            const roleBadge = data.role === '관리자' ? `<span class="badge-admin">관리자</span>` : "";
+
             post.innerHTML = `
                 <div class="post-header">
-                    <span class="post-nickname">${data.nickname}</span>
+                    <div>
+                        <span class="post-nickname">${data.nickname}</span>
+                        ${roleBadge}
+                    </div>
                     <span class="post-time">${data.time}</span>
                 </div>
                 <div class="post-content">${data.content}</div>

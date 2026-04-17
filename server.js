@@ -7,7 +7,6 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
-// [설정] 사진 전송을 위한 용량 제한 해제 (50MB)
 const io = new Server(server, {
     maxHttpBufferSize: 5e7 
 });
@@ -24,12 +23,10 @@ if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
         messages = JSON.parse(fileData);
     } catch (e) {
-        console.log("데이터 로드 오류:", e);
         messages = [];
     }
 }
 
-// 경로 설정
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
 
@@ -37,10 +34,14 @@ io.on('connection', (socket) => {
     socket.emit('load_history', messages);
 
     socket.on('new_post', (data) => {
+        // [추가] 관리자 닉네임 설정 (여기서 '운영자'를 원하는 이름으로 바꾸세요)
+        const isAdmin = data.nickname === '운영자'; 
+
         const messageData = {
             nickname: data.nickname,
             content: data.content,
             image: data.image, 
+            role: isAdmin ? '관리자' : '멤버', // 역할 지정
             time: new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' })
         };
         messages.push(messageData);

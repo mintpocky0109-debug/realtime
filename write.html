@@ -14,12 +14,12 @@
             <input id="nickname" class="input-field" type="text" placeholder="닉네임을 입력하세요">
             
             <div>
-                <label class="file-label" for="imageInput">📷 사진 첨부</label>
+                <label style="display: inline-block; padding: 10px 18px; background: #4f545c; border-radius: 4px; cursor: pointer; font-size: 14px;" for="imageInput">📷 사진 첨부</label>
                 <input type="file" id="imageInput" accept="image/*" style="display:none;">
                 <div id="preview" style="margin-top:10px;"></div>
             </div>
 
-            <textarea id="content" class="input-field" placeholder="내용을 마음껏 작성해 보세요..."></textarea>
+            <textarea id="content" class="input-field" placeholder="내용을 작성하세요... (Ctrl + Enter로 즉시 등록)"></textarea>
             
             <div style="display:flex; gap:10px; justify-content: flex-end;">
                 <button onclick="location.href='/'" style="padding:12px 25px; border-radius:4px; cursor:pointer; background:#4f545c; color:white; border:none;">취소</button>
@@ -33,11 +33,19 @@
         const socket = io();
         let b64 = "";
 
-        // 닉네임 기억하기 기능
         window.onload = () => {
             const savedNick = localStorage.getItem('userNickname');
             if (savedNick) document.getElementById('nickname').value = savedNick;
         };
+
+        // [추가] 엔터키 감지 로직
+        // 텍스트 영역에서 Ctrl + Enter를 누르면 바로 전송 시도
+        document.getElementById('content').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                send();
+            }
+        });
 
         document.getElementById('imageInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -54,8 +62,17 @@
         function send() {
             const nick = document.getElementById('nickname').value || '익명';
             const msg = document.getElementById('content').value;
-            if(msg || b64) {
-                localStorage.setItem('userNickname', nick); // 닉네임 저장
+            
+            if(!msg && !b64) {
+                alert("내용을 입력해주세요.");
+                return;
+            }
+
+            // [추가] 업로드 확인 문구 출력
+            const confirmUpload = confirm("게시글을 업로드 하시겠습니까?");
+            
+            if (confirmUpload) {
+                localStorage.setItem('userNickname', nick);
                 socket.emit('new_post', { nickname: nick, content: msg, image: b64 });
                 alert("성공적으로 등록되었습니다!");
                 location.href = '/';
