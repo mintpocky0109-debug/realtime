@@ -1,109 +1,27 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const fs = require('fs');
+/* 기본 레이아웃 */
+body { margin: 0; font-family: 'Pretendard', sans-serif; background: #f5f6f7; color: #333; }
+.header { background: #fff; padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+.header h1 { color: #2db400; margin: 0; font-size: 24px; cursor: pointer; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { 
-    maxHttpBufferSize: 5e7, 
-    cors: { origin: "*" } 
-});
+.main-wrapper { display: flex; max-width: 1100px; margin: 20px auto; gap: 20px; }
+.sidebar { width: 220px; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #eee; height: fit-content; }
+.content { flex: 1; background: #fff; border-radius: 12px; border: 1px solid #eee; min-height: 600px; }
 
-app.use(express.static(path.join(__dirname)));
-app.use(express.json({ limit: '50mb' }));
+/* 게시판 목록 스타일 */
+.board-item { padding: 10px; cursor: pointer; border-radius: 8px; margin-bottom: 5px; font-weight: 500; transition: 0.2s; }
+.board-item:hover { background: #f0f0f0; }
+.board-item.active { background: #2db400; color: white; }
 
-const DATA_FILE = './data.json';
-const CONFIG_FILE = './config.json';
-const USER_FILE = './users.json';
+/* 글 목록 스타일 */
+.post-list-item { padding: 15px 20px; border-bottom: 1px solid #f9f9f9; cursor: pointer; }
+.post-list-item:hover { background: #fafafa; }
+.post-list-item div { font-size: 16px; margin-bottom: 5px; font-weight: bold; }
+.post-list-item small { color: #888; }
 
-const ADMIN_ID = "Mint_pocky"; 
+/* 버튼 및 입력창 */
+.btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+.btn-green { background: #2db400; color: white; }
+.input-style { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
 
-const loadJson = (file, defaultVal) => {
-    try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : defaultVal; }
-    catch (e) { return defaultVal; }
-};
-
-let posts = loadJson(DATA_FILE, []);
-let users = loadJson(USER_FILE, []);
-let cafeConfig = loadJson(CONFIG_FILE, {
-    themeColor: "#2db400",
-    cafeName: "☕ 카페 에스프레소",
-    boards: ["자유게시판", "공지사항", "가입인사"],
-    staffList: [] 
-});
-
-app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
-
-// 회원가입
-app.post('/api/signup', (req, res) => {
-    const { userId, password, nickname } = req.body;
-    if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
-    let role = (userId === ADMIN_ID) ? "주인장" : "멤버";
-    users.push({ userId, password, nickname, role, profileImg: "", profileDesc: "반갑습니다!", bgImg: "" });
-    fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
-    res.json({ success: true });
-});
-
-// 로그인
-app.post('/api/login', (req, res) => {
-    const { userId, password } = req.body;
-    const user = users.find(u => u.userId === userId && u.password === password);
-    if (user) {
-        user.role = (user.userId === ADMIN_ID) ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버");
-        res.json({ success: true, user });
-    } else res.json({ success: false, msg: "정보가 틀렸습니다." });
-});
-
-// 프로필 업데이트
-app.post('/api/update-profile', (req, res) => {
-    const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
-    const user = users.find(u => u.userId === userId);
-    if (user) {
-        user.nickname = nickname;
-        user.profileImg = profileImg;
-        user.profileDesc = profileDesc;
-        user.bgImg = bgImg;
-        fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
-        res.json({ success: true, user });
-    }
-});
-
-io.on('connection', (socket) => {
-    socket.emit('load_all', { posts, config: cafeConfig, users });
-
-    socket.on('new_post', (data) => {
-        const user = users.find(u => u.nickname === data.nickname);
-        const newPost = { id: Date.now(), ...data, role: user ? user.role : "멤버", profileImg: user ? user.profileImg : "", time: new Date().toLocaleString(), likedBy: [], comments: [] };
-        posts.push(newPost);
-        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
-        io.emit('update_posts', posts);
-    });
-
-    socket.on('update_config', (data) => {
-        const user = users.find(u => u.nickname === data.adminNick);
-        if (!user || (user.role !== '주인장' && user.role !== '점원')) return;
-        if (user.role === '점원') delete data.newConfig.staffList;
-        cafeConfig = { ...cafeConfig, ...data.newConfig };
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
-        io.emit('update_config', cafeConfig);
-    });
-
-    socket.on('new_comment', (data) => {
-        const post = posts.find(p => p.id === data.postId);
-        if(post) {
-            const user = users.find(u => u.nickname === data.nickname);
-            const commentObj = { id: Date.now(), nickname: data.nickname, profileImg: user?user.profileImg:"", content: data.content, time: new Date().toLocaleTimeString(), replies: [] };
-            if (data.parentId) {
-                const parent = post.comments.find(c => c.id === data.parentId);
-                if (parent) parent.replies.push(commentObj);
-            } else post.comments.push(commentObj);
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
-            io.emit('update_posts', posts);
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server running on ${PORT}`));
+/* 모달 */
+.modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:1000; }
