@@ -28,20 +28,15 @@ let cafeConfig = loadJson(CONFIG_FILE, { cafeName: "☕ 카페 에스프레소",
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (!userId || !password || !nickname) return res.json({ success: false, message: "모든 항목을 입력해주세요." });
+    if (users.some(u => u.userId === userId.trim())) return res.json({ success: false, message: "이미 존재하는 아이디입니다." });
     
-    if (users.some(u => u.userId === userId)) return res.json({ success: false, message: "이미 존재하는 아이디입니다." });
-    if (users.some(u => u.nickname === nickname)) return res.json({ success: false, message: "이미 존재하는 닉네임입니다." });
-
     const newUser = { 
         userId: userId.trim(), 
         password: password.trim(), 
         nickname: nickname.trim(), 
-        role: userId.trim() === "Mint_pocky" ? "주인장" : "멤버", // 주인장 권한 고정
-        profileImg: "", 
-        profileDesc: "반갑습니다!", 
-        bgImg: "" 
+        role: userId.trim() === "Mint_pocky" ? "주인장" : "멤버",
+        profileImg: "", profileDesc: "반갑습니다!", bgImg: "" 
     };
-
     users.push(newUser);
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
@@ -51,43 +46,58 @@ app.post('/api/signup', (req, res) => {
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
-    
     if (user) {
-        // 로그인 시점에 다시 한 번 역할 체크 (보안)
-        user.role = (user.userId === "Mint_pocky") ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버");
+        // 등급 최신화
+        if (user.userId === "Mint_pocky") user.role = "주인장";
+        else if (cafeConfig.staffList.includes(user.userId)) user.role = "점원";
+        else user.role = "멤버";
         res.json({ success: true, user });
-    } else {
-        res.json({ success: false, message: "아이디 또는 비밀번호가 올바르지 않습니다." });
-    }
+    } else res.json({ success: false, message: "정보가 일치하지 않습니다." });
 });
 
 // 프로필 수정
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
     const idx = users.findIndex(u => u.userId === userId);
-    
     if (idx !== -1) {
-        // 본인 제외 닉네임 중복 체크
-        if(users.some((u, i) => u.nickname === nickname && i !== idx)) {
-            return res.json({ success: false, message: "이미 사용 중인 닉네임입니다." });
-        }
-        
         users[idx].nickname = nickname;
         users[idx].profileImg = profileImg;
         users[idx].profileDesc = profileDesc;
         users[idx].bgImg = bgImg;
-
         fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
-        io.emit('update_users', users); // 실시간 반영
+        io.emit('update_users', users);
         res.json({ success: true, user: users[idx] });
-    } else {
-        res.json({ success: false, message: "유저 정보를 찾을 수 없습니다." });
+    } else res.json({ success: false, message: "유저를 찾을 수 없습니다." });
+});
+
+// [관리자] 점원 고용/해제 및 강퇴
+app.post('/api/admin/manage-user', (req, res) => {
+    const { adminId, targetId, action } = req.body;
+    const admin = users.find(u => u.userId === adminId);
+    if (!admin || (admin.role !== '주인장' && admin.role !== '점원')) return res.json({ success: false, message: "권한이 없습니다." });
+
+    const targetIdx = users.findIndex(u => u.userId === targetId);
+    if (targetIdx === -1) return res.json({ success: false, message: "대상을 찾을 수 없습니다." });
+
+    if (action === 'promote' && admin.role === '주인장') {
+        if (!cafeConfig.staffList.includes(targetId)) cafeConfig.staffList.push(targetId);
+    } else if (action === 'demote' && admin.role === '주인장') {
+        cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId);
+    } else if (action === 'kick') {
+        if (users[targetIdx].role === '주인장') return res.json({ success: false, message: "주인장은 강퇴할 수 없습니다." });
+        users.splice(targetIdx, 1);
+        cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId);
     }
+
+    fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+    io.emit('update_users', users);
+    res.json({ success: true });
 });
 
 io.on('connection', (socket) => {
     socket.emit('load_all', { posts, config: cafeConfig, users });
-    // ... (포스트 작성, 좋아요 등 기존 소켓 로직 동일)
+    // ... 기타 소켓 로직 (글쓰기 등) 동일
 });
 
-server.listen(3000, "0.0.0.0", () => console.log("Server running on port 3000"));
+server.listen(3000, "0.0.0.0", () => console.log("Server running"));
