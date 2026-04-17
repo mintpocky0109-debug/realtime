@@ -7,11 +7,10 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-    maxHttpBufferSize: 5e7, 
+    maxHttpBufferSize: 5e7, // 50MB 제한 (사진 업로드 대응)
     cors: { origin: "*" } 
 });
 
-// 파일 업로드 및 데이터 전송을 위한 설정
 app.use(express.static(path.join(__dirname)));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -20,6 +19,7 @@ const DATA_FILE = './data.json';
 const CONFIG_FILE = './config.json';
 const USER_FILE = './users.json';
 
+// ⭐ 주인장 아이디 고정
 const ADMIN_ID = "Mint_pocky"; 
 
 const loadJson = (file, defaultVal) => {
@@ -36,32 +36,32 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     staffList: [] 
 });
 
-// ❌ Cannot GET /write 에러 해결을 위한 경로 설정
-app.get('/write', (req, res) => {
-    res.sendFile(path.join(__dirname, 'write.html'));
-});
+app.get('/write', (req, res) => res.sendFile(path.join(__dirname, 'write.html')));
 
-// 회원가입
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (users.some(u => u.userId === userId)) return res.json({ success: false, msg: "이미 존재하는 아이디입니다." });
+    
     let role = (userId === ADMIN_ID) ? "주인장" : "멤버";
-    users.push({ userId, password, nickname, role, profileImg: "", profileDesc: "반갑습니다!", bgImg: "" });
+    const newUser = { 
+        userId, password, nickname, role,
+        profileImg: "", profileDesc: "반갑습니다!", bgImg: "" 
+    };
+    users.push(newUser);
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
-// 로그인
 app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
+        // 로그인 시 실시간 권한 체크
         user.role = (user.userId === ADMIN_ID) ? "주인장" : (cafeConfig.staffList.includes(user.nickname) ? "점원" : "멤버");
         res.json({ success: true, user });
-    } else res.json({ success: false, msg: "아이디 또는 비밀번호가 틀렸습니다." });
+    } else res.json({ success: false, msg: "정보가 올바르지 않습니다." });
 });
 
-// 프로필 업데이트
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
     const user = users.find(u => u.userId === userId);
@@ -132,4 +132,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Server is running`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Server is running on port ${PORT}`));
