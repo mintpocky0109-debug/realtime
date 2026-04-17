@@ -95,15 +95,17 @@
         let authMode = 'L';
 
         socket.on('load_all', d => { 
-            allPosts = d.posts; 
-            cafeConfig = d.config; 
-            allUsers = d.users; 
+            allPosts = d.posts; cafeConfig = d.config; allUsers = d.users; 
+            // 현재 로그인된 유저의 정보를 allUsers에서 최신화
+            if(currentUser) {
+                const latest = allUsers.find(u => u.userId === currentUser.userId);
+                if(latest) {
+                    currentUser = latest;
+                    localStorage.setItem('cafeUser', JSON.stringify(latest));
+                }
+            }
             renderAll(); 
         });
-        socket.on('update_posts', p => { allPosts = p; renderPosts(); });
-        socket.on('update_config', c => { cafeConfig = c; renderAll(); });
-        // 실시간 유저 정보 업데이트 수신
-        socket.on('update_users', u => { allUsers = u; });
 
         function renderAll() {
             document.getElementById('cafeName').innerText = cafeConfig.cafeName;
@@ -115,7 +117,6 @@
         function updateAuthUI() {
             const h = document.getElementById('headerAuth');
             if(currentUser) {
-                // 닉네임을 찾지 못하는 이슈 방지를 위해 trim() 추가 및 본인 닉네임 명시
                 h.innerHTML = `
                     <b onclick="showProfile('${currentUser.nickname.trim()}')" style="cursor:pointer; margin-right:12px; font-size:15px; color:#333; text-decoration:underline;">
                         ${currentUser.nickname}님
@@ -129,11 +130,70 @@
             }
         }
 
+        // --- 프로필 저장 로직 수정 (userId 검증 강화) ---
+        async function saveProfile() {
+            if(!currentUser || !currentUser.userId) return alert("로그인 정보가 유실되었습니다. 다시 로그인해주세요.");
+            if(!confirm("설정을 저장하시겠습니까?")) return;
+
+            const bg = document.getElementById('bgP').style.backgroundImage.slice(5, -2).replace(/"/g, "");
+            const pf = document.getElementById('pfP').src;
+            const newNick = document.getElementById('setNick').value.trim();
+            const newDesc = document.getElementById('setDesc').value;
+
+            try {
+                const res = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.userId, // 이 값이 정확해야 서버에서 찾을 수 있음
+                        nickname: newNick,
+                        profileDesc: newDesc,
+                        profileImg: pf, 
+                        bgImg: bg
+                    })
+                });
+                
+                const data = await res.json();
+                if(data.success) {
+                    localStorage.setItem('cafeUser', JSON.stringify(data.user));
+                    currentUser = data.user;
+                    alert("성공적으로 저장되었습니다!");
+                    location.reload(); 
+                } else {
+                    alert(data.message || "저장 실패");
+                }
+            } catch(e) {
+                console.error(e);
+                alert("서버 연결에 실패했습니다.");
+            }
+        }
+
+        function showProfile(nick) {
+            let targetUser = allUsers.find(x => x.nickname.trim() === nick.trim());
+            if(!targetUser && currentUser && currentUser.nickname.trim() === nick.trim()) targetUser = currentUser;
+            if(!targetUser) return alert("유저 정보를 찾을 수 없습니다.");
+            
+            document.getElementById('p-bg').style.backgroundImage = targetUser.bgImg ? `url(${targetUser.bgImg})` : 'none';
+            document.getElementById('p-img').src = targetUser.profileImg || DEFAULT_PF;
+            document.getElementById('p-nick').innerText = targetUser.nickname;
+            document.getElementById('p-desc').innerText = targetUser.profileDesc || "안녕하세요! 반갑습니다.";
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        function openSettings() {
+            if(!currentUser) return;
+            document.getElementById('setNick').value = currentUser.nickname;
+            document.getElementById('setDesc').value = currentUser.profileDesc || "";
+            document.getElementById('bgP').style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
+            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
+            if(currentUser.role === '주인장' || currentUser.role === '점원') document.getElementById('adminTab').style.display = 'block';
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
         function renderPosts() {
             const t = document.getElementById('currentBoardTitle').innerText;
             let f = t === "전체보기" ? allPosts : allPosts.filter(p=>p.board===t);
             f.sort((a, b) => (b.board === "공지사항") - (a.board === "공지사항") || b.id - a.id);
-
             document.getElementById('postList').innerHTML = f.map(p=>`
                 <div class="post-list-item ${p.board==='공지사항'?'notice-pinned':''}" onclick="openPost(${p.id})">
                     <div style="flex:1;">
@@ -165,106 +225,21 @@
         }
 
         function closePost() { document.getElementById('listView').style.display='block'; document.getElementById('postDetailView').style.display='none'; }
-        
-        // --- 프로필 보기 수정: 본인 정보 우선 참조 ---
-        function showProfile(nick) {
-            // 1. 전체 유저 목록에서 검색
-            let targetUser = allUsers.find(x => x.nickname.trim() === nick.trim());
-            
-            // 2. 만약 목록에 없는데 그게 본인이라면 currentUser 사용
-            if(!targetUser && currentUser && currentUser.nickname.trim() === nick.trim()) {
-                targetUser = currentUser;
-            }
-
-            if(!targetUser) {
-                alert("유저 정보를 찾을 수 없습니다.");
-                return;
-            }
-            
-            document.getElementById('p-bg').style.backgroundImage = targetUser.bgImg ? `url(${targetUser.bgImg})` : 'none';
-            document.getElementById('p-img').src = targetUser.profileImg || DEFAULT_PF;
-            document.getElementById('p-nick').innerText = targetUser.nickname;
-            document.getElementById('p-desc').innerText = targetUser.profileDesc || "안녕하세요! 반갑습니다.";
-            document.getElementById('profileModal').style.display = 'flex';
-        }
-
-        function openSettings() {
-            if(!currentUser) return;
-            document.getElementById('setNick').value = currentUser.nickname;
-            document.getElementById('setDesc').value = currentUser.profileDesc || "";
-            document.getElementById('bgP').style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
-            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
-            if(currentUser.role === '주인장' || currentUser.role === '점원') document.getElementById('adminTab').style.display = 'block';
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
-        async function saveProfile() {
-            if(!confirm("설정을 저장하시겠습니까?")) return;
-            const bg = document.getElementById('bgP').style.backgroundImage.slice(5, -2).replace(/"/g, "");
-            const pf = document.getElementById('pfP').src;
-            
-            try {
-                const res = await fetch('/api/update-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.userId,
-                        nickname: document.getElementById('setNick').value,
-                        profileDesc: document.getElementById('setDesc').value,
-                        profileImg: pf, bgImg: bg
-                    })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    localStorage.setItem('cafeUser', JSON.stringify(data.user));
-                    alert("성공적으로 저장되었습니다!");
-                    location.reload(); 
-                } else alert(data.message || "저장 실패");
-            } catch(e) { alert("서버 오류가 발생했습니다."); }
-        }
-
-        function pvImg(input, targetId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    if (targetId === 'bgP') {
-                        document.getElementById(targetId).style.backgroundImage = `url(${e.target.result})`;
-                        document.getElementById(targetId).innerText = '';
-                    }
-                    else document.getElementById(targetId).src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function switchLTab(m) {
-            authMode = m;
-            document.getElementById('lTabL').classList.toggle('active', m==='L');
-            document.getElementById('lTabS').classList.toggle('active', m==='S');
-            document.getElementById('uNi').style.display = m==='S' ? 'block' : 'none';
-            document.getElementById('authBtn').innerText = m==='L' ? '로그인' : '회원가입';
-        }
-
+        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
+        function switchLTab(m) { authMode = m; document.getElementById('lTabL').classList.toggle('active', m==='L'); document.getElementById('lTabS').classList.toggle('active', m==='S'); document.getElementById('uNi').style.display = m==='S' ? 'block' : 'none'; document.getElementById('authBtn').innerText = m==='L' ? '로그인' : '회원가입'; }
         async function auth() {
             const userId = document.getElementById('uId').value.trim();
             const password = document.getElementById('uPw').value.trim();
             const nickname = document.getElementById('uNi').value.trim();
             if(!userId || !password) return alert("항목을 입력하세요.");
-            if(authMode==='S' && !nickname) return alert("닉네임을 입력하세요.");
-            const res = await fetch(authMode==='L'?'/api/login':'/api/signup', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ userId, password, nickname })
-            });
+            const res = await fetch(authMode==='L'?'/api/login':'/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId, password, nickname }) });
             const d = await res.json();
             if(d.success) {
                 if(authMode==='L'){ localStorage.setItem('cafeUser', JSON.stringify(d.user)); location.reload(); }
                 else { alert("가입되었습니다! 로그인해주세요."); switchLTab('L'); }
             } else alert(d.message || "실패했습니다.");
         }
-
-        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
-        function toggleLike(postId) { if(!currentUser) return alert("로그인하세요."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
+        function pvImg(input, targetId) { const file = input.files[0]; if (file) { const reader = new FileReader(); reader.onload = e => { if (targetId === 'bgP') { document.getElementById(targetId).style.backgroundImage = `url(${e.target.result})`; document.getElementById(targetId).innerText = ''; } else document.getElementById(targetId).src = e.target.result; }; reader.readAsDataURL(file); } }
         function filterBoard(n, e) { document.querySelectorAll('.board-item').forEach(i=>i.classList.remove('active')); e.classList.add('active'); document.getElementById('currentBoardTitle').innerText=n; closePost(); renderPosts(); }
         function showSTab(i, e) { document.querySelectorAll('.s-tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.st-content').forEach(c=>c.style.display='none'); e.classList.add('active'); document.getElementById(`st-${i}`).style.display='block'; }
     </script>
