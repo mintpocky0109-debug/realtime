@@ -3,43 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>커뮤니티</title>
+    <title>내 전용 커뮤니티</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="settings-icon" onclick="openSettings()">⚙️</div>
 
-    <header class="cafe-header" style="padding: 20px; text-align: center;">
-        <h1 id="cafeTitle">🚀 로딩 중...</h1>
+    <header class="cafe-header">
+        <div class="container">
+            <h1 id="cafeTitle">🚀 로딩 중...</h1>
+        </div>
     </header>
 
-    <div style="padding: 0 15px 15px; display: flex; justify-content: flex-end;">
-        <button class="btn btn-main" onclick="location.href='/write'">📝 글쓰기</button>
-    </div>
+    <main class="container">
+        <div style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+            <button class="btn btn-main" onclick="location.href='/write'">📝 글쓰기</button>
+        </div>
 
-    <div id="board" style="max-width: 800px; margin: 0 auto; width: 100%;"></div>
+        <div id="board"></div>
+    </main>
 
-    <div id="settingsModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
-        <div class="modal-content">
-            <div class="modal-sidebar" style="width:200px; background:#1e1f22; display:flex; flex-direction:column; padding:15px; gap:10px;">
-                <div onclick="showMenu('info')" style="cursor:pointer;">🏠 정보</div>
-                <div onclick="showMenu('design')" style="cursor:pointer;">🎨 디자인</div>
-                <div onclick="showMenu('admin')" style="cursor:pointer;">🛡️ 관리</div>
-                <div onclick="closeSettings()" style="margin-top:auto; color:red; cursor:pointer;">❌ 닫기</div>
+    <div id="settingsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding: 20px;">
+        <div style="background:white; border-radius:15px; width:100%; max-width:500px; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                <strong>카페 설정</strong>
+                <span onclick="closeSettings()" style="cursor:pointer;">✕</span>
             </div>
-            <div class="modal-body" id="menu-info" style="flex:1; padding:30px;">
-                <h2>내 권한 정보</h2>
-                <div id="myRoleInfo">확인 중...</div>
-            </div>
-            <div class="modal-body" id="menu-design" style="flex:1; padding:30px; display:none;">
-                <h2>디자인 커스텀</h2>
-                <label>테마 색상</label>
-                <input type="color" id="themePick" style="width:100%; height:40px;">
-                <button onclick="saveSettings()" class="btn btn-main" style="margin-top:15px;">저장</button>
-            </div>
-            <div class="modal-body" id="menu-admin" style="flex:1; padding:30px; display:none;">
-                <h2>전체 삭제</h2>
-                <button onclick="clearBoard()" style="background:red; color:white;" class="btn">모든 글 지우기</button>
+            <div style="padding:20px;">
+                <label>테마 색상 변경</label>
+                <input type="color" id="themePick" style="width:100%; height:40px; margin:10px 0;">
+                <button onclick="saveSettings()" class="btn btn-main" style="width:100%;">저장하기</button>
             </div>
         </div>
     </div>
@@ -51,10 +44,6 @@
 
         function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-        function showMenu(m) {
-            document.querySelectorAll('.modal-body').forEach(b => b.style.display='none');
-            document.getElementById('menu-'+m).style.display='block';
-        }
 
         socket.on('update_config', c => {
             document.getElementById('cafeTitle').innerText = c.cafeName;
@@ -67,17 +56,16 @@
             [...h].reverse().forEach(d => {
                 const p = document.createElement('div');
                 p.className = 'post';
-                p.style.cssText = "background:var(--bg-card); margin-bottom:10px; padding:20px; border-radius:12px; position:relative;";
                 
-                const roleBadge = d.role === "주인장" ? `<span style="background:gold; color:black; padding:2px 5px; border-radius:4px; font-size:10px; margin-right:5px;">주인장</span>` : "";
-                const img = d.image ? `<img src="${d.image}" style="width:100%; border-radius:8px; margin-top:10px;">` : "";
+                const roleBadge = d.role === "주인장" ? `<span style="color:var(--naver-green); border:1px solid var(--naver-green); padding:1px 4px; border-radius:3px; font-size:11px; margin-right:5px;">주인장</span>` : "";
+                const img = d.image ? `<img src="${d.image}" class="post-image">` : "";
                 
                 p.innerHTML = `
-                    <div style="display:flex; align-items:center; margin-bottom:8px;">
-                        ${roleBadge}<strong>${d.nickname}</strong>
-                        <small style="color:#888; margin-left:10px;">${d.time}</small>
+                    <div class="post-header">
+                        <div class="post-author">${roleBadge}${d.nickname}</div>
+                        <div class="post-time">${d.time}</div>
                     </div>
-                    <div style="white-space:pre-wrap;">${d.content}</div>
+                    <div class="post-content">${d.content}</div>
                     ${img}
                 `;
                 board.appendChild(p);
@@ -88,13 +76,6 @@
             const color = document.getElementById('themePick').value;
             socket.emit('update_cafe_settings', { adminNick: myNick, settings: { themeColor: color } });
             closeSettings();
-        }
-
-        function clearBoard() {
-            if(confirm("정말로 모든 글을 삭제하시겠습니까?")) {
-                socket.emit('clear_all', myNick);
-                closeSettings();
-            }
         }
     </script>
 </body>
