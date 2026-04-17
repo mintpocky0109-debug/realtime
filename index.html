@@ -14,8 +14,14 @@
         .board-item.active { background: #e8f5e9; color: #2db400; font-weight: bold; }
         .post-img-preview { max-width: 100%; border-radius: 10px; margin-top: 15px; border: 1px solid #eee; }
         .photo-icon { font-size: 12px; vertical-align: middle; color: #888; margin-left: 5px; }
-        /* 회원 관리 칸 공간 확보 */
         #userListArea { min-height: 300px; }
+
+        /* --- 로그인/회원가입 친절한 UI 추가 --- */
+        .auth-form-group { margin-bottom: 15px; text-align: left; }
+        .auth-label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; margin-left: 4px; }
+        .auth-header { text-align: center; margin-bottom: 25px; }
+        .auth-header h2 { margin: 0; color: #333; font-size: 22px; }
+        .auth-header p { margin: 5px 0 0; color: #888; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -82,15 +88,35 @@
     </div>
 
     <div id="loginModal" class="modal">
-        <div style="background:white; width:320px; border-radius:20px; padding:30px;">
-            <div style="display:flex; margin-bottom:20px;">
-                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; cursor:pointer;" onclick="switchLTab('L')">로그인</div>
-                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; cursor:pointer;" onclick="switchLTab('S')">회원가입</div>
+        <div style="background:white; width:340px; border-radius:25px; padding:35px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div class="auth-header">
+                <h2 id="authTitle">반가워요!</h2>
+                <p id="authSubTitle">카페 에스프레소에 오신 걸 환영합니다.</p>
             </div>
-            <input type="text" id="uId" placeholder="아이디" class="input-style">
-            <input type="password" id="uPw" placeholder="비밀번호" class="input-style">
-            <input type="text" id="uNi" placeholder="닉네임" class="input-style" style="display:none;">
-            <button id="authBtn" class="btn btn-green" style="width:100%;" onclick="auth()">로그인</button>
+
+            <div style="display:flex; margin-bottom:25px; background: #f5f5f5; padding: 5px; border-radius: 12px;">
+                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; cursor:pointer; padding: 8px; border: none;" onclick="switchLTab('L')">로그인</div>
+                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; cursor:pointer; padding: 8px; border: none;" onclick="switchLTab('S')">회원가입</div>
+            </div>
+
+            <div class="auth-form-group">
+                <label class="auth-label">아이디</label>
+                <input type="text" id="uId" placeholder="아이디를 입력하세요" class="input-style">
+            </div>
+
+            <div class="auth-form-group">
+                <label class="auth-label">비밀번호</label>
+                <input type="password" id="uPw" placeholder="비밀번호를 입력하세요" class="input-style">
+            </div>
+
+            <div id="nickGroup" class="auth-form-group" style="display:none;">
+                <label class="auth-label">닉네임</label>
+                <input type="text" id="uNi" placeholder="카페에서 사용할 이름" class="input-style">
+            </div>
+
+            <button id="authBtn" class="btn btn-green" style="width:100%; padding: 15px; font-size: 16px; margin-top: 10px; border-radius: 12px;" onclick="auth()">로그인하기</button>
+            
+            <p style="text-align: center; font-size: 12px; color: #aaa; margin-top: 20px;">계정 정보 분실 시 관리자에게 문의하세요.</p>
         </div>
     </div>
 
@@ -160,7 +186,6 @@
             document.getElementById('postDetailBody').innerHTML = `<h3>${p.nickname}</h3><p style="white-space:pre-wrap;">${p.content}</p>`;
             document.getElementById('postImgArea').innerHTML = (p.image && p.image !== "") ? `<img src="${p.image}" class="post-img-preview">` : "";
             const isLiked = currentUser && p.likedBy && p.likedBy.includes(currentUser.userId);
-            /* 하트를 커피 아이콘으로 변경 */
             document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})">${isLiked?'☕':'🍵'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
         }
 
@@ -226,10 +251,29 @@
                 userId:document.getElementById('uId').value, password:document.getElementById('uPw').value, nickname:document.getElementById('uNi').value
             })});
             const d = await res.json();
-            if(d.success) { if(authMode==='L'){ localStorage.setItem('cafeUser', JSON.stringify(d.user)); location.reload(); } else switchLTab('L'); } else alert(d.message);
+            if(d.success) { 
+                if(authMode==='L'){ 
+                    localStorage.setItem('cafeUser', JSON.stringify(d.user)); 
+                    location.reload(); 
+                } else {
+                    alert("가입을 축하드려요! 이제 로그인해주세요.");
+                    switchLTab('L'); 
+                }
+            } else alert(d.message || "오류가 발생했습니다.");
         }
 
-        function switchLTab(m) { authMode=m; document.getElementById('uNi').style.display=m==='S'?'block':'none'; document.getElementById('authBtn').innerText=m==='L'?'로그인':'회원가입'; }
+        function switchLTab(m) { 
+            authMode = m; 
+            const isLogin = m === 'L';
+            document.getElementById('authTitle').innerText = isLogin ? "반가워요!" : "처음인가요?";
+            document.getElementById('authSubTitle').innerText = isLogin ? "카페 에스프레소에 오신 걸 환영합니다." : "새로운 멤버가 되는 건 언제나 환영이에요.";
+            document.getElementById('nickGroup').style.display = isLogin ? 'none' : 'block'; 
+            document.getElementById('authBtn').innerText = isLogin ? '로그인하기' : '가입 완료하기';
+            
+            document.getElementById('lTabL').classList.toggle('active', isLogin);
+            document.getElementById('lTabS').classList.toggle('active', !isLogin);
+        }
+
         function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
         function closePost() { currentPostId = null; document.getElementById('listView').style.display='block'; document.getElementById('postDetailView').style.display='none'; }
         function pvImg(i,t){ const f=i.files[0]; if(f){ const r=new FileReader(); r.onload=e=>{ if(t==='bgP')document.getElementById(t).style.backgroundImage=`url(${e.target.result})`; else document.getElementById(t).src=e.target.result; }; r.readAsDataURL(f); } }
