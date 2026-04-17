@@ -66,30 +66,22 @@
             <div style="padding:25px;">
                 <input type="text" id="authId" placeholder="아이디" class="input-style">
                 <input type="password" id="authPw" placeholder="비밀번호" class="input-style">
-                <input type="text" id="authNick" placeholder="닉네임 (#admin777 가능)" class="input-style" style="display:none;">
+                <input type="text" id="authNick" placeholder="사용할 닉네임" class="input-style" style="display:none;">
                 <button id="authBtn" class="btn btn-green" style="width:100%;" onclick="handleAuth()">로그인</button>
+                <button class="btn" style="width:100%; margin-top:10px; background:#f0f0f0;" onclick="closeLogin()">닫기</button>
             </div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // ... (이전과 동일한 스크립트 로직) ...
         const socket = io();
         let allPosts = [], cafeConfig = {}, allUsers = [], openedPostId = null, authMode = 'login';
         let currentUser = JSON.parse(localStorage.getItem('cafeUser')) || null;
 
-        socket.on('load_all', data => { 
-            cafeConfig = data.config; 
-            allPosts = data.posts; 
-            allUsers = data.users || [];
-            renderAll(); 
-        });
-
-        socket.on('update_posts', p => { 
-            allPosts = p; 
-            renderPosts(); 
-            if(openedPostId) renderPostDetail(openedPostId); 
-        });
+        socket.on('load_all', data => { cafeConfig = data.config; allPosts = data.posts; allUsers = data.users || []; renderAll(); });
+        socket.on('update_posts', p => { allPosts = p; renderPosts(); if(openedPostId) renderPostDetail(openedPostId); });
 
         function renderAll() {
             document.getElementById('cafeName').innerText = cafeConfig.cafeName;
@@ -122,7 +114,7 @@
             const filtered = (title === "전체보기") ? allPosts : allPosts.filter(p => p.board === title);
             list.innerHTML = filtered.slice().reverse().map(p => `
                 <div class="post-list-item" onclick="openPost(${p.id})">
-                    <div style="font-weight:bold; font-size:16px;">${p.content.substring(0,40)}...</div>
+                    <div style="font-weight:bold; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.content.substring(0,40)}</div>
                     <div style="font-size:13px; color:#888; margin-top:5px;">
                         <span class="user-nick-click" onclick="event.stopPropagation(); openProfile('${p.nickname}')">${p.nickname}</span> · ☕ ${p.likedBy.length} · 댓글 ${p.comments.length}
                     </div>
@@ -147,7 +139,7 @@
                 <h1 style="margin:0 0 5px 0;"><span class="user-nick-click" onclick="openProfile('${post.nickname}')">${post.nickname}</span> <span class="badge" style="background:var(--naver-green); color:white; font-size:10px; vertical-align:middle;">${post.role}</span></h1>
                 <div style="color:#bbb; font-size:13px; margin-bottom:30px;">${post.time}</div>
                 <div style="font-size:17px; white-space:pre-wrap; min-height:100px;">${post.content}</div>
-                ${post.image ? `<img src="${post.image}">` : ""}
+                ${post.image ? `<img src="${post.image}" style="max-width:100%; border-radius:10px; margin-top:20px;">` : ""}
                 <div style="text-align:center; margin:40px 0;">
                     <button class="btn" style="border:1.5px solid ${isLiked?'var(--naver-green)':'#ddd'}; background:${isLiked?'var(--naver-green-light)':'white'};" 
                         onclick="toggleLike(${post.id})">☕ 커피 쏘기 ${post.likedBy.length}</button>
@@ -164,21 +156,19 @@
 
         function openProfile(nick) {
             const userPosts = allPosts.filter(p => p.nickname === nick);
-            const user = userPosts[0]; // 해당 유저의 최신 정보 추출
-            
             document.getElementById('profNick').innerText = nick;
-            document.getElementById('profRole').innerText = user ? user.role : "멤버";
+            document.getElementById('profRole').innerText = userPosts.length > 0 ? userPosts[0].role : "멤버";
             document.getElementById('profPostList').innerHTML = userPosts.reverse().map(p => `
-                <div class="user-post-link" onclick="closeProfile(); openPost(${p.id})">
-                    [${p.board}] ${p.content.substring(0,25)}...
-                </div>
-            `).join('') || '<div style="color:#ccc; padding:20px; text-align:center;">작성한 글이 없습니다.</div>';
-            
+                <div class="user-post-link" onclick="closeProfile(); openPost(${p.id})">[${p.board}] ${p.content.substring(0,25)}...</div>
+            `).join('') || '<div style="padding:20px; text-align:center; color:#ccc;">작성글이 없습니다.</div>';
             document.getElementById('profileModal').style.display = 'flex';
         }
 
         function closeProfile() { document.getElementById('profileModal').style.display = 'none'; }
-        
+        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
+        function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
+        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
+
         async function handleAuth() {
             const userId = document.getElementById('authId').value;
             const password = document.getElementById('authPw').value;
@@ -197,8 +187,8 @@
 
         function toggleAuthTab(mode) {
             authMode = mode;
-            document.getElementById('loginTab').style.borderBottom = mode === 'login' ? '2px solid var(--naver-green)' : 'none';
-            document.getElementById('signupTab').style.borderBottom = mode === 'signup' ? '2px solid var(--naver-green)' : 'none';
+            document.getElementById('loginTab').className = mode === 'login' ? 'active' : '';
+            document.getElementById('signupTab').className = mode === 'signup' ? 'active' : '';
             document.getElementById('authNick').style.display = mode === 'signup' ? 'block' : 'none';
             document.getElementById('authBtn').innerText = mode === 'login' ? '로그인' : '회원가입';
         }
@@ -222,8 +212,6 @@
             closePost(); renderPosts();
         }
 
-        function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
-        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
         function closePost() { openedPostId = null; document.getElementById('listView').style.display = 'block'; document.getElementById('postDetailView').style.display = 'none'; }
     </script>
 </body>
