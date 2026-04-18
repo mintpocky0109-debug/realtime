@@ -1,3 +1,4 @@
+/* style.css */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Playfair+Display:wght@700&display=swap');
 
 :root {
@@ -212,68 +213,41 @@ body {
 .s-tab { font-weight: 700; color: #aaa; transition: 0.3s; }
 .s-tab.active { color: var(--primary-color); background: white !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 
-/* --- 모바일 대응 (대폭 수정됨) --- */
+/* 댓글 스타일 추가 */
+.comment-section { margin-top: 40px; border-top: 2px solid #f8f9fa; padding-top: 30px; }
+.comment-count { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--accent-color); }
+.comment-item { padding: 20px; border-bottom: 1px solid #f0f0f0; position: relative; }
+.reply-item { 
+    margin-left: 40px; margin-top: 10px; padding: 15px; 
+    background: #f9fbf9; border-radius: 12px; border-left: 3px solid var(--primary-color); 
+}
+.comment-info { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.comment-nick { font-weight: 700; color: var(--text-main); }
+.comment-time { color: var(--text-muted); }
+.comment-text { font-size: 15px; color: #444; line-height: 1.5; word-break: break-all; }
+.comment-btns { display: flex; gap: 15px; margin-top: 10px; }
+.c-btn { font-size: 12px; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 0; font-weight: 600; }
+.c-btn:hover { color: var(--primary-color); }
+.c-btn.liked { color: var(--primary-color); }
+.comment-input-box { 
+    display: flex; gap: 10px; margin-top: 20px; background: #fff; 
+    padding: 10px; border: 1px solid #eee; border-radius: var(--radius-md); 
+}
+.comment-input-box input { flex: 1; border: none; outline: none; font-size: 14px; }
+.reply-input-area { margin: 10px 0 10px 40px; display: none; }
+
+/* --- 모바일 대응 --- */
 @media (max-width: 850px) {
     .header { padding: 15px 20px; }
     .header h1 { font-size: 22px; }
-    
-    .main-wrapper { 
-        grid-template-columns: 1fr; 
-        margin: 10px auto; 
-        padding: 0 10px 100px 10px; /* 하단 버튼 공간 확보 */
-    }
-    
-    /* 사이드바를 하단 플로팅 바 형태로 변경 */
-    .sidebar { 
-        position: fixed; 
-        bottom: 15px; 
-        left: 50%; 
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 450px;
-        z-index: 999; 
-        padding: 12px 20px; 
-        border-radius: 40px; 
-        background: white;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    
-    #boardList { display: none; } /* 모바일에서는 게시판 리스트 숨김 */
-    
-    #sideMenu { 
-        display: flex !important; 
-        flex-direction: row !important; 
-        margin: 0 !important; 
-        padding: 0 !important; 
-        border: none !important;
-        gap: 10px;
-        width: 100%;
-    }
-    
-    #sideMenu button { 
-        flex: 1;
-        margin: 0 !important; 
-        padding: 12px 10px !important; 
-        font-size: 13px !important; 
-        white-space: nowrap;
-        border-radius: 25px !important;
-    }
-    
-    /* 검색창 영역 모바일 최적화 */
-    .search-area { 
-        padding: 15px 20px; 
-        position: sticky;
-        bottom: 0;
-        background: #fff;
-        border-top: 1px solid #eee;
-    }
-    
+    .main-wrapper { grid-template-columns: 1fr; margin: 10px auto; padding: 0 10px 100px 10px; }
+    .sidebar { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; z-index: 999; padding: 12px 20px; border-radius: 40px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; }
+    #boardList { display: none; }
+    #sideMenu { display: flex !important; flex-direction: row !important; margin: 0 !important; padding: 0 !important; border: none !important; gap: 10px; width: 100%; }
+    #sideMenu button { flex: 1; margin: 0 !important; padding: 12px 10px !important; font-size: 13px !important; white-space: nowrap; border-radius: 25px !important; }
+    .search-area { padding: 15px 20px; position: sticky; bottom: 0; background: #fff; border-top: 1px solid #eee; }
     .search-input { max-width: none; font-size: 13px; }
     .search-btn { padding: 10px 15px; font-size: 13px; }
-
     .post-list-item { padding: 20px !important; }
-    .post-list-item div:first-child { font-size: 16px !important; }
+    .reply-item { margin-left: 20px; }
 }

@@ -1,4 +1,4 @@
-// server.js 맨 윗줄에 추가
+// server.js
 process.env.TZ = 'Asia/Seoul';
 const express = require('express');
 const http = require('http');
@@ -96,6 +96,43 @@ io.on('connection', (socket) => {
             const idx = post.likedBy.indexOf(userId);
             if (idx === -1) post.likedBy.push(userId);
             else post.likedBy.splice(idx, 1);
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            io.emit('update_posts', posts);
+        }
+    });
+
+    // 댓글 및 답글 추가 로직
+    socket.on('new_comment', ({ postId, commentId, data }) => {
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        if (!post.comments) post.comments = [];
+
+        if (commentId) { // 답글인 경우
+            const parent = post.comments.find(c => c.id === commentId);
+            if (parent) {
+                if (!parent.replies) parent.replies = [];
+                parent.replies.push({ id: Date.now(), ...data, time: new Date().toLocaleString(), likedBy: [] });
+            }
+        } else { // 일반 댓글인 경우
+            post.comments.push({ id: Date.now(), ...data, time: new Date().toLocaleString(), likedBy: [], replies: [] });
+        }
+        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+        io.emit('update_posts', posts);
+    });
+
+    // 댓글/답글 커피 쏘기 로직
+    socket.on('toggle_comment_like', ({ postId, commentId, replyId, userId }) => {
+        const post = posts.find(p => p.id === postId);
+        if (!post || !userId) return;
+        const comment = post.comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        let target = replyId ? (comment.replies || []).find(r => r.id === replyId) : comment;
+        if (target) {
+            if (!target.likedBy) target.likedBy = [];
+            const idx = target.likedBy.indexOf(userId);
+            if (idx === -1) target.likedBy.push(userId);
+            else target.likedBy.splice(idx, 1);
             fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
             io.emit('update_posts', posts);
         }

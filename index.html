@@ -39,6 +39,15 @@
                 <div id="postDetailBody"></div>
                 <div id="postImgArea"></div>
                 <div id="likeArea" style="margin-top:40px; padding-top:20px; border-top:1px solid #eee;"></div>
+                
+                <div class="comment-section">
+                    <div class="comment-count">댓글 <span id="commentCount">0</span></div>
+                    <div id="commentList"></div>
+                    <div id="mainCommentInput" class="comment-input-box" style="display:none;">
+                        <input type="text" id="cInput" placeholder="따뜻한 댓글을 남겨주세요...">
+                        <button class="btn btn-green" style="padding:8px 15px;" onclick="addComment(null)">등록</button>
+                    </div>
+                </div>
             </div>
         </section>
     </div>
@@ -194,6 +203,87 @@
             document.getElementById('postImgArea').innerHTML = (p.image && p.image !== "") ? `<img src="${p.image}" style="max-width:100%; border-radius:15px; margin-top:25px; box-shadow:0 10px 20px rgba(0,0,0,0.05);">` : "";
             const isLiked = currentUser && p.likedBy && p.likedBy.includes(currentUser.userId);
             document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})" style="display:flex; align-items:center; gap:8px; padding:15px 30px;">${isLiked?'☕':'🍵'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
+            
+            // 댓글 렌더링 호출
+            renderComments(p);
+        }
+
+        // 댓글 렌더링 로직
+        function renderComments(post) {
+            const listEl = document.getElementById('commentList');
+            const countEl = document.getElementById('commentCount');
+            const inputArea = document.getElementById('mainCommentInput');
+            
+            inputArea.style.display = currentUser ? 'flex' : 'none';
+            const comments = post.comments || [];
+            let totalCount = comments.length;
+            comments.forEach(c => totalCount += (c.replies ? c.replies.length : 0));
+            countEl.innerText = totalCount;
+
+            listEl.innerHTML = comments.map(c => {
+                const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
+                let html = `
+                <div class="comment-item">
+                    <div class="comment-info">
+                        <span class="comment-nick" onclick="showProfileById('${c.userId}')" style="cursor:pointer;">${c.nickname}</span>
+                        <span class="comment-time">${c.time}</span>
+                    </div>
+                    <div class="comment-text">${c.content}</div>
+                    <div class="comment-btns">
+                        <span class="c-btn ${isCLiked?'liked':''}" onclick="toggleCommentLike(${post.id}, ${c.id})">☕ 커피 ${c.likedBy?.length || 0}</span>
+                        <span class="c-btn" onclick="toggleReplyInput(${c.id})">답글 달기</span>
+                    </div>
+                    <div id="replyArea-${c.id}" class="reply-input-area">
+                        <div class="comment-input-box">
+                            <input type="text" id="rInput-${c.id}" placeholder="답글을 입력하세요...">
+                            <button class="btn btn-green" style="padding:5px 10px; font-size:12px;" onclick="addComment(${c.id})">등록</button>
+                        </div>
+                    </div>
+                </div>`;
+
+                if (c.replies) {
+                    c.replies.forEach(r => {
+                        const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
+                        html += `
+                        <div class="reply-item">
+                            <div class="comment-info">
+                                <span class="comment-nick" onclick="showProfileById('${r.userId}')" style="cursor:pointer;">${r.nickname}</span>
+                                <span class="comment-time">${r.time}</span>
+                            </div>
+                            <div class="comment-text">${r.content}</div>
+                            <div class="comment-btns">
+                                <span class="c-btn ${isRLiked?'liked':''}" onclick="toggleCommentLike(${post.id}, ${c.id}, ${r.id})">☕ 커피 ${r.likedBy?.length || 0}</span>
+                            </div>
+                        </div>`;
+                    });
+                }
+                return html;
+            }).join('');
+        }
+
+        function addComment(parentId) {
+            if (!currentUser) return alert("로그인이 필요합니다.");
+            const input = parentId ? document.getElementById(`rInput-${parentId}`) : document.getElementById('cInput');
+            const content = input.value.trim();
+            if (!content) return;
+
+            socket.emit('new_comment', {
+                postId: currentPostId,
+                commentId: parentId,
+                data: { userId: currentUser.userId, nickname: currentUser.nickname, content }
+            });
+            input.value = "";
+        }
+
+        function toggleReplyInput(cid) {
+            if (!currentUser) return alert("로그인이 필요합니다.");
+            const el = document.getElementById(`replyArea-${cid}`);
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function toggleCommentLike(postId, commentId, replyId = null) {
+            if (!currentUser) return alert("로그인이 필요합니다.");
+            socket.emit('toggle_comment_like', { postId, commentId, replyId, userId: currentUser.userId });
         }
 
         function toggleLike(postId) { if(!currentUser) return alert("로그인 후 이용 가능합니다."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
