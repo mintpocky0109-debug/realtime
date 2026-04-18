@@ -118,8 +118,11 @@
         socket.on('update_users', u => { allUsers = u; updateAuthUI(); });
 
         function renderAll() {
-            document.getElementById('boardList').innerHTML = `<div class="board-item ${currentBoard==='전체보기'?'active':''}" onclick="filterBoard('전체보기')">📋 전체보기</div>` + 
-                cafeConfig.boards.map(b => `<div class="board-item ${currentBoard===b?'active':''}" onclick="filterBoard('${b}')">📋 ${b}</div>`).join('');
+            const boardListEl = document.getElementById('boardList');
+            if(boardListEl) {
+                boardListEl.innerHTML = `<div class="board-item ${currentBoard==='전체보기'?'active':''}" onclick="filterBoard('전체보기')">📋 전체보기</div>` + 
+                    cafeConfig.boards.map(b => `<div class="board-item ${currentBoard===b?'active':''}" onclick="filterBoard('${b}')">📋 ${b}</div>`).join('');
+            }
             updateAuthUI();
             renderPosts();
         }
@@ -139,19 +142,16 @@
         function filterBoard(name) { 
             currentBoard = name; 
             document.getElementById('currentBoardTitle').innerText = name; 
-            document.getElementById('searchInput').value = ""; // 게시판 바뀔 때 검색어 초기화
+            document.getElementById('searchInput').value = ""; 
             renderAll(); 
             closePost(); 
         }
 
-        // 검색 기능 함수 추가
         function searchPosts() {
             const keyword = document.getElementById('searchInput').value.trim();
             if(!keyword) { renderPosts(); return; }
-            
             let filtered = currentBoard === '전체보기' ? allPosts : allPosts.filter(p => p.board === currentBoard);
             let searchResults = filtered.filter(p => p.content.toLowerCase().includes(keyword.toLowerCase()));
-            
             displayPosts(searchResults);
         }
 
@@ -160,7 +160,6 @@
             displayPosts(filtered);
         }
 
-        // 실제 화면에 글 리스트를 그리는 공통 함수
         function displayPosts(postsArr) {
             document.getElementById('postList').innerHTML = postsArr.map(p => {
                 const u = allUsers.find(x => x.nickname === p.nickname);
