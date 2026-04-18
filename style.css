@@ -20,6 +20,7 @@ body {
     line-height: 1.6;
 }
 
+/* 헤더 & 레이아웃 */
 .header {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(15px);
@@ -52,6 +53,7 @@ body {
     padding: 0 20px;
 }
 
+/* 사이드바 */
 .sidebar {
     background: var(--card-bg);
     border-radius: var(--radius-lg);
@@ -82,12 +84,25 @@ body {
     box-shadow: 0 4px 12px rgba(45, 180, 0, 0.2);
 }
 
+/* 게시글 영역 */
 .content {
     background: var(--card-bg);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     min-height: 700px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#listView {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#postList {
+    flex: 1;
 }
 
 .post-list-item {
@@ -96,7 +111,6 @@ body {
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    /* [수정] 모바일에서 긴 제목이 삐져나가지 않도록 줄바꿈 처리 */
     word-break: break-all; 
 }
 
@@ -105,6 +119,47 @@ body {
     transform: scale(1.01);
 }
 
+/* 검색창 (추가됨) */
+.search-area {
+    padding: 20px 35px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.search-input {
+    flex: 1;
+    max-width: 300px;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+}
+
+.search-btn {
+    padding: 10px 20px;
+    background: #555;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.search-btn:hover {
+    background: #333;
+}
+
+/* 버튼 & 입력창 */
 .btn {
     border: none;
     border-radius: var(--radius-md);
@@ -142,6 +197,7 @@ body {
     box-shadow: 0 0 0 4px rgba(45, 180, 0, 0.1);
 }
 
+/* 모달 & 탭 */
 .modal {
     display: none;
     position: fixed;
@@ -153,21 +209,19 @@ body {
     justify-content: center;
 }
 
-/* 탭 스타일 */
 .s-tab { font-weight: 700; color: #aaa; transition: 0.3s; }
 .s-tab.active { color: var(--primary-color); background: white !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 
-/* [수정] 모바일 대응 */
+/* 모바일 대응 */
 @media (max-width: 850px) {
     .main-wrapper { grid-template-columns: 1fr; margin: 15px auto; }
     
-    /* 사이드바 자체는 숨기되, 내부의 sideMenu(버튼들)는 우측 하단에 고정 */
     .sidebar { 
         position: fixed; bottom: 20px; right: 20px; z-index: 999; 
         padding: 10px; border-radius: 50px; background: white;
         box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
-    #boardList { display: none; } /* 게시판 목록은 상단이나 다른 곳으로 빼기 전까진 모바일서 숨김 */
+    #boardList { display: none; } 
     
     #sideMenu { 
         display: flex !important; flex-direction: row !important; 
@@ -178,4 +232,8 @@ body {
     
     .header { padding: 15px 20px; }
     .post-list-item { padding: 20px !important; }
+
+    /* 모바일 검색창 조정 */
+    .search-area { padding: 15px; }
+    .search-input { max-width: none; }
 }
