@@ -5,6 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>☕ 카페 에스프레소</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        :root { --naver-green: #03c75a; --bg-gray: #f9f9f9; --border-color: #eee; }
+        
+        /* 게시판 테이블 스타일 (네이버 카페형) */
+        .board-table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+        .board-table th { padding: 12px 8px; border-bottom: 1px solid #333; font-size: 13px; color: #666; text-align: center; background: #fff; }
+        .board-table td { padding: 14px 8px; border-bottom: 1px solid var(--border-color); font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .td-num { width: 60px; text-align: center; color: #999; }
+        .td-title { text-align: left; cursor: pointer; padding-left: 15px !important; }
+        .td-title:hover { text-decoration: underline; }
+        .td-author { width: 130px; text-align: left; color: #555; }
+        .td-date { width: 90px; text-align: center; color: #999; font-size: 12px; }
+        .comment-count-badge { color: #ff5e5e; font-weight: bold; font-size: 12px; margin-left: 5px; font-family: sans-serif; }
+
+        /* 상세 페이지 상단 바 */
+        .post-header-bar { display: flex; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #eee; margin-bottom: 30px; }
+        .post-header-bar img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 1px solid #eee; cursor: pointer; }
+        .post-info-text { display: flex; flex-direction: column; gap: 4px; }
+        .post-info-nick { font-weight: bold; font-size: 16px; cursor: pointer; color: #333; }
+        .post-info-meta { font-size: 13px; color: #999; }
+
+        /* 네이버형 댓글창 */
+        .comment-input-container { background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin-top: 20px; }
+        .comment-input-container textarea { width: 100%; border: none; outline: none; resize: none; height: 70px; font-size: 14px; font-family: inherit; }
+        .comment-input-footer { display: flex; justify-content: flex-end; align-items: center; margin-top: 10px; border-top: 1px solid #f5f5f5; padding-top: 10px; }
+        
+        .clickable-nick:hover { text-decoration: underline; cursor: pointer; }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -23,86 +51,94 @@
         
         <section class="content">
             <div id="listView">
-                <div style="padding:30px 35px; border-bottom:2px solid #f8f9fa; display:flex; justify-content:space-between; align-items:center;">
-                    <h2 id="currentBoardTitle" style="margin:0; font-size:22px; color:#1a1a1a;">전체보기</h2>
-                    <span style="font-size:13px; color:#aaa;">오늘의 새로운 소식</span>
+                <div style="padding:15px 0; display:flex; justify-content:space-between; align-items:center;">
+                    <h2 id="currentBoardTitle" style="margin:0; font-size:20px; letter-spacing:-1px;">전체보기</h2>
                 </div>
-                <div id="postList"></div>
-                <div class="search-area">
+                <table class="board-table">
+                    <thead>
+                        <tr>
+                            <th class="td-num">번호</th>
+                            <th>제목</th>
+                            <th class="td-author">작성자</th>
+                            <th class="td-date">날짜</th>
+                        </tr>
+                    </thead>
+                    <tbody id="postList"></tbody>
+                </table>
+                <div class="search-area" style="margin-top:30px;">
                     <input type="text" id="searchInput" class="search-input" placeholder="글 내용 검색..." onkeyup="if(window.event.keyCode==13){searchPosts()}">
                     <button class="search-btn" onclick="searchPosts()">검색</button>
                 </div>
             </div>
 
-            <div id="postDetailView" style="display:none; padding:40px;">
-                <div onclick="closePost()" style="cursor:pointer; color:var(--primary-color); font-weight:700; margin-bottom:30px; display:inline-block;">← 목록으로 돌아가기</div>
-                <div id="postDetailBody"></div>
+            <div id="postDetailView" style="display:none; padding:30px;">
+                <div onclick="closePost()" style="cursor:pointer; color:#03c75a; font-weight:bold; font-size:14px; margin-bottom:25px; display:inline-block;">◀ 목록으로 돌아가기</div>
+                <div id="postDetailHeader"></div>
+                <div id="postDetailBody" style="min-height:200px; padding:10px 0; font-size:16px; color:#333;"></div>
                 <div id="postImgArea"></div>
-                <div id="likeArea" style="margin-top:40px; padding-top:20px; border-top:1px solid #eee;"></div>
-                
-                <div class="comment-section">
-                    <div class="comment-count">댓글 <span id="commentCount">0</span></div>
+                <div id="likeArea" style="margin-top:40px; display:flex; gap:10px;"></div>
+                <div class="comment-section" style="margin-top:50px; background:#fcfcfc; padding:25px; border-radius:12px; border:1px solid #f0f0f0;">
+                    <div style="font-weight:bold; margin-bottom:20px; font-size:16px;">댓글 <span id="commentCount" style="color:#03c75a;">0</span></div>
                     <div id="commentList"></div>
-                    <div id="mainCommentInput" class="comment-input-box" style="display:none;">
-                        <input type="text" id="cInput" placeholder="따뜻한 댓글을 남겨주세요...">
-                        <button class="btn btn-green" style="padding:8px 15px;" onclick="addComment(null)">등록</button>
+                    <div id="mainCommentInput" class="comment-input-container" style="display:none;">
+                        <textarea id="cInput" placeholder="댓글을 입력해 주세요."></textarea>
+                        <div class="comment-input-footer">
+                            <button class="btn btn-green" style="padding:8px 25px; border-radius:4px;" onclick="addComment(null)">등록</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
     </div>
 
+    <div id="profileModal" class="modal" onclick="this.style.display='none'">
+        <div style="background:white; width:340px; border-radius:20px; overflow:hidden; box-shadow:0 15px 50px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
+            <div id="p-bg" style="height:110px; background:#eee center/cover;"></div>
+            <div style="padding:25px; text-align:center;">
+                <img id="p-img" style="width:90px; height:90px; border-radius:50%; border:5px solid white; margin-top:-70px; background:white; object-fit:cover;">
+                <h3 id="p-nick" style="margin:15px 0 5px; font-size:20px;"></h3>
+                <p id="p-desc" style="color:#888; font-size:14px; margin-bottom:25px; line-height:1.5;"></p>
+                <button class="btn btn-green" style="width:100%;" onclick="document.getElementById('profileModal').style.display='none'">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <div id="loginModal" class="modal">
-        <div style="background:white; width:360px; border-radius:30px; padding:40px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
-            <div style="text-align:center; margin-bottom:30px;">
-                <h2 id="authTitle" style="margin:0; font-size:24px;">Welcome!</h2>
-                <p id="authSubTitle" style="color:#888; margin-top:10px; font-size:14px;">카페 에스프레소의 멤버가 되어보세요.</p>
+        <div style="background:white; width:350px; border-radius:20px; padding:40px;">
+            <div style="text-align:center; margin-bottom:30px;"><h2 id="authTitle" style="margin:0;">로그인</h2></div>
+            <div style="display:flex; margin-bottom:20px; background: #eee; padding: 5px; border-radius: 12px;">
+                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; cursor:pointer; padding:10px; border-radius:10px;" onclick="switchLTab('L')">로그인</div>
+                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; cursor:pointer; padding:10px; border-radius:10px;" onclick="switchLTab('S')">회원가입</div>
             </div>
-            <div style="display:flex; margin-bottom:25px; background: #f0f2f0; padding: 6px; border-radius: 15px;">
-                <div id="lTabL" class="s-tab active" style="flex:1; text-align:center; cursor:pointer; padding:10px; border-radius:12px;" onclick="switchLTab('L')">로그인</div>
-                <div id="lTabS" class="s-tab" style="flex:1; text-align:center; cursor:pointer; padding:10px; border-radius:12px;" onclick="switchLTab('S')">회원가입</div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:15px;">
-                <input type="text" id="uId" placeholder="ID" class="input-style">
-                <input type="password" id="uPw" placeholder="Password" class="input-style">
-                <div id="nickGroup" style="display:none;"><input type="text" id="uNi" placeholder="Nickname" class="input-style"></div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <input type="text" id="uId" placeholder="아이디" class="input-style">
+                <input type="password" id="uPw" placeholder="비밀번호" class="input-style">
+                <div id="nickGroup" style="display:none;"><input type="text" id="uNi" placeholder="사용할 닉네임" class="input-style"></div>
                 <button id="authBtn" class="btn btn-green" onclick="auth()">로그인하기</button>
-                <button class="btn" style="background:#eee;" onclick="document.getElementById('loginModal').style.display='none'">닫기</button>
+                <button class="btn" style="background:#f1f1f1;" onclick="document.getElementById('loginModal').style.display='none'">취소</button>
             </div>
         </div>
     </div>
 
     <div id="settingsModal" class="modal">
-        <div style="background:white; width:480px; border-radius:30px; padding:35px; max-height: 85vh; overflow-y: auto;">
-            <div style="display:flex; gap:10px; border-bottom:1px solid #f0f0f0; margin-bottom:25px;">
-                <div id="tab0" class="s-tab active" style="padding:10px 20px; cursor:pointer;" onclick="showSTab(0)">프로필 관리</div>
-                <div id="tab1" class="s-tab" style="padding:10px 20px; cursor:pointer; display:none;" onclick="showSTab(1)">멤버 관리</div>
+        <div style="background:white; width:460px; border-radius:20px; padding:30px; max-height:85vh; overflow-y:auto;">
+            <div style="display:flex; gap:15px; border-bottom:2px solid #f5f5f5; margin-bottom:25px;">
+                <div id="tab0" class="s-tab active" style="padding:10px 5px; cursor:pointer; font-weight:bold;" onclick="showSTab(0)">프로필 관리</div>
+                <div id="tab1" class="s-tab" style="padding:10px 5px; cursor:pointer; font-weight:bold; display:none;" onclick="showSTab(1)">멤버 관리</div>
             </div>
-            <div id="st-0" class="st-content">
-                <div id="bgP" style="width:100%; height:130px; border-radius:15px; background:#f8f9fa center/cover; cursor:pointer; display:flex; align-items:center; justify-content:center; border:2px dashed #ddd; color:#aaa; font-size:14px;" onclick="document.getElementById('bgF').click()">배너 배경 업로드</div>
+            <div id="st-0">
+                <div id="bgP" style="width:100%; height:130px; border-radius:12px; background:#f8f9fa center/cover; cursor:pointer; display:flex; align-items:center; justify-content:center; border:2px dashed #ddd; color:#aaa;" onclick="document.getElementById('bgF').click()">배너 배경 업로드</div>
                 <img id="pfP" style="width:80px; height:80px; border-radius:50%; border:4px solid white; margin-top:-40px; margin-left:20px; object-fit:cover; background:#eee; box-shadow:0 5px 15px rgba(0,0,0,0.1);" onclick="document.getElementById('pfF').click()">
                 <input type="file" id="bgF" style="display:none;" onchange="pvImg(this, 'bgP')">
                 <input type="file" id="pfF" style="display:none;" onchange="pvImg(this, 'pfP')">
                 <div style="margin-top:20px; display:flex; flex-direction:column; gap:12px;">
-                    <input type="text" id="setNick" placeholder="사용할 닉네임" class="input-style">
-                    <textarea id="setDesc" placeholder="당신을 소개해 주세요." class="input-style" style="height:100px; resize:none;"></textarea>
-                    <button class="btn btn-green" style="width:100%;" onclick="saveProfile()">저장하기</button>
+                    <input type="text" id="setNick" placeholder="닉네임" class="input-style">
+                    <textarea id="setDesc" placeholder="자기소개를 적어주세요." class="input-style" style="height:100px; resize:none;"></textarea>
+                    <button class="btn btn-green" style="width:100%;" onclick="saveProfile()">설정 저장</button>
                 </div>
             </div>
-            <div id="st-1" class="st-content" style="display:none;"><div id="userListArea"></div></div>
+            <div id="st-1" style="display:none;"><div id="userListArea"></div></div>
             <button class="btn" style="width:100%; margin-top:20px; background:#f1f1f1;" onclick="document.getElementById('settingsModal').style.display='none'">닫기</button>
-        </div>
-    </div>
-
-    <div id="profileModal" class="modal" onclick="this.style.display='none'">
-        <div style="background:white; width:360px; border-radius:30px; overflow:hidden;" onclick="event.stopPropagation()">
-            <div id="p-bg" style="height:120px; background-color:#ddd; background-position:center; background-size:cover;"></div>
-            <div style="padding:30px; text-align:center;">
-                <img id="p-img" style="width:100px; height:100px; border-radius:50%; border:5px solid white; margin-top:-70px; background:white; object-fit:cover;">
-                <h3 id="p-nick" style="margin:15px 0 5px; font-size:20px;"></h3>
-                <p id="p-desc" style="color:#7f8c8d; font-size:14px; margin-bottom:25px;"></p>
-                <button class="btn btn-green" style="width:100%;" onclick="document.getElementById('profileModal').style.display='none'">닫기</button>
-            </div>
         </div>
     </div>
 
@@ -111,7 +147,7 @@
         const socket = io();
         const DEFAULT_PF = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23DBDBDB'%3E%3Crect width='24' height='24' fill='%23F0F0F0'/%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
         let allPosts = [], cafeConfig = {}, allUsers = [], currentUser = JSON.parse(localStorage.getItem('cafeUser')) || null;
-        let authMode = 'L', currentBoard = '전체보기', currentPostId = null;
+        let currentBoard = '전체보기', currentPostId = null, authMode = 'L';
 
         socket.on('load_all', d => { 
             allPosts = d.posts; cafeConfig = d.config; allUsers = d.users; 
@@ -124,33 +160,24 @@
         });
 
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(currentPostId) renderPostDetail(currentPostId); });
-        socket.on('update_users', u => { allUsers = u; updateAuthUI(); });
+        socket.on('update_users', u => { allUsers = u; updateAuthUI(); if(document.getElementById('settingsModal').style.display==='flex') renderUserAdmin(); });
 
-        // 프로필 표시 함수 (핵심: ID가 없으면 닉네임으로 찾음)
         function showProfile(idOrNick) {
-            if(!idOrNick) return alert("유저 정보를 찾을 수 없습니다.");
-            
-            // 1. userId로 검색 -> 2. 없으면 nickname으로 검색
-            let user = allUsers.find(u => u.userId === idOrNick);
-            if(!user) user = allUsers.find(u => u.nickname === idOrNick);
-
-            if(!user) return alert("탈퇴했거나 존재하지 않는 유저입니다.");
-
+            let user = allUsers.find(u => u.userId === idOrNick) || allUsers.find(u => u.nickname === idOrNick);
+            if(!user) return alert("유저 정보를 찾을 수 없습니다.");
             const badge = user.role === '주인장' ? '👑 ' : (user.role === '점원' ? '⭐ ' : '');
             document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
             document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
             document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
             document.getElementById('p-nick').innerText = badge + user.nickname;
-            document.getElementById('p-desc').innerText = user.profileDesc || "소개가 없습니다.";
+            document.getElementById('p-desc').innerText = user.profileDesc || "안녕하세요! 반갑습니다.";
             document.getElementById('profileModal').style.display = 'flex';
         }
 
         function renderAll() {
-            const boardListEl = document.getElementById('boardList');
-            if(boardListEl) {
-                boardListEl.innerHTML = `<div class="board-item ${currentBoard==='전체보기'?'active':''}" onclick="filterBoard('전체보기')">📋 전체보기</div>` + 
-                    cafeConfig.boards.map(b => `<div class="board-item ${currentBoard===b?'active':''}" onclick="filterBoard('${b}')">📋 ${b}</div>`).join('');
-            }
+            const bEl = document.getElementById('boardList');
+            bEl.innerHTML = `<div class="board-item ${currentBoard==='전체보기'?'active':''}" onclick="filterBoard('전체보기')">📋 전체보기</div>` + 
+                cafeConfig.boards.map(b => `<div class="board-item ${currentBoard===b?'active':''}" onclick="filterBoard('${b}')">📋 ${b}</div>`).join('');
             updateAuthUI();
             renderPosts();
         }
@@ -159,7 +186,7 @@
             const h = document.getElementById('headerAuth');
             if(currentUser) {
                 const badge = currentUser.role === '주인장' ? '👑 ' : (currentUser.role === '점원' ? '⭐ ' : '');
-                h.innerHTML = `<span onclick="showProfile('${currentUser.userId}')" style="cursor:pointer; font-weight:700;">${badge}${currentUser.nickname}</span> <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; margin-left:15px; background:#fefefe; border:1px solid #eee;">로그아웃</button>`;
+                h.innerHTML = `<span onclick="showProfile('${currentUser.userId}')" style="cursor:pointer; font-weight:700;">${badge}${currentUser.nickname}</span> <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; margin-left:15px; background:#fff; border:1px solid #ddd;">로그아웃</button>`;
                 document.getElementById('sideMenu').style.display = 'block';
             } else {
                 h.innerHTML = `<button class="btn btn-green" onclick="document.getElementById('loginModal').style.display='flex'">로그인</button>`;
@@ -167,225 +194,266 @@
             }
         }
 
-        function filterBoard(name) { 
-            currentBoard = name; 
-            document.getElementById('currentBoardTitle').innerText = name; 
-            document.getElementById('searchInput').value = ""; 
-            renderAll(); 
-            closePost(); 
-        }
-
-        function searchPosts() {
-            const keyword = document.getElementById('searchInput').value.trim();
-            if(!keyword) { renderPosts(); return; }
-            let filtered = currentBoard === '전체보기' ? allPosts : allPosts.filter(p => p.board === currentBoard);
-            let searchResults = filtered.filter(p => p.content.toLowerCase().includes(keyword.toLowerCase()));
-            displayPosts(searchResults);
-        }
-
         function renderPosts() {
             let filtered = currentBoard === '전체보기' ? allPosts : allPosts.filter(p => p.board === currentBoard);
             displayPosts(filtered);
         }
 
-        function displayPosts(postsArr) {
-            document.getElementById('postList').innerHTML = postsArr.map(p => {
+        function displayPosts(arr) {
+            const listEl = document.getElementById('postList');
+            const sorted = [...arr].reverse();
+            listEl.innerHTML = sorted.map((p, idx) => {
                 const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
                 const badge = u?.role === '주인장' ? '👑' : (u?.role === '점원' ? '⭐' : '');
-                const photoIcon = (p.image && p.image !== "") ? '<span style="font-size:12px; margin-left:5px;">🖼️</span>' : '';
-                // 프로필 조회를 위해 userId가 있으면 사용, 없으면 nickname 사용
-                const identifier = p.userId || p.nickname;
+                const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
+                const iden = p.userId || p.nickname;
+                const timeStr = p.time.split(',')[0].replace(/\s/g, '').slice(2); // YY.MM.DD 형식
 
                 return `
-                    <div class="post-list-item" onclick="openPost(${p.id})">
-                        <div style="font-weight:700; font-size:18px; color:#2c3e50; margin-bottom:8px;">${p.content.substring(0,38)}${p.content.length>38?'...':''}${photoIcon}</div>
-                        <div style="display:flex; align-items:center; font-size:13px; color:#95a5a6;">
-                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${identifier}')" style="color:var(--primary-color); font-weight:700; cursor:pointer;">${badge}${p.nickname}</span>
-                            <span style="margin:0 10px; opacity:0.3;">|</span>
-                            <span>${p.time.split(',')[0]}</span>
-                        </div>
-                    </div>`;
-            }).join('') || '<div style="padding:100px; text-align:center; color:#ccc;">조건에 맞는 글이 없습니다.</div>';
+                    <tr>
+                        <td class="td-num">${sorted.length - idx}</td>
+                        <td class="td-title" onclick="openPost(${p.id})">
+                            ${p.content.substring(0,45)}${p.content.length>45?'...':''}
+                            ${p.image?'<span style="font-size:11px; margin-left:3px;">🖼️</span>':''}
+                            ${cCount > 0 ? `<span class="comment-count-badge">${cCount}</span>` : ''}
+                        </td>
+                        <td class="td-author">
+                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${iden}')">${badge}${p.nickname}</span>
+                        </td>
+                        <td class="td-date">${timeStr}</td>
+                    </tr>`;
+            }).join('') || '<tr><td colspan="4" style="text-align:center; padding:100px; color:#ccc;">게시글이 없습니다.</td></tr>';
+        }
+
+        function searchPosts() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            if(!keyword) { renderPosts(); return; }
+            let filtered = (currentBoard === '전체보기' ? allPosts : allPosts.filter(p => p.board === currentBoard))
+                .filter(p => p.content.toLowerCase().includes(keyword) || p.nickname.toLowerCase().includes(keyword));
+            displayPosts(filtered);
         }
 
         function openPost(id) {
             currentPostId = id;
-            renderPostDetail(id);
             document.getElementById('listView').style.display = 'none';
             document.getElementById('postDetailView').style.display = 'block';
+            renderPostDetail(id);
             window.scrollTo(0, 0);
         }
 
         function renderPostDetail(id) {
             const p = allPosts.find(x => x.id === id); if(!p) return;
-            const identifier = p.userId || p.nickname;
+            const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
+            const badge = u?.role === '주인장' ? '👑' : (u?.role === '점원' ? '⭐' : '');
+            const iden = p.userId || p.nickname;
 
-            document.getElementById('postDetailBody').innerHTML = `
-                <h2 style="margin-bottom:10px; cursor:pointer; display:inline-block;" onclick="showProfile('${identifier}')">${p.nickname}님의 기록</h2>
-                <div style="font-size:13px; color:#aaa; margin-bottom:30px;">${p.time}</div>
-                <p style="white-space:pre-wrap; font-size:16px; line-height:1.8; color:#444;">${p.content}</p>`;
-            document.getElementById('postImgArea').innerHTML = (p.image && p.image !== "") ? `<img src="${p.image}" style="max-width:100%; border-radius:15px; margin-top:25px; box-shadow:0 10px 20px rgba(0,0,0,0.05);">` : "";
-            const isLiked = currentUser && p.likedBy && p.likedBy.includes(currentUser.userId);
-            document.getElementById('likeArea').innerHTML = `<button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})" style="display:flex; align-items:center; gap:8px; padding:15px 30px;">${isLiked?'☕':'🍵'} 커피 쏘기 ${p.likedBy?p.likedBy.length:0}</button>`;
+            document.getElementById('postDetailHeader').innerHTML = `
+                <div class="post-header-bar">
+                    <img src="${u?.profileImg || DEFAULT_PF}" onclick="showProfile('${iden}')">
+                    <div class="post-info-text">
+                        <span class="post-info-nick" onclick="showProfile('${iden}')">${badge}${p.nickname}</span>
+                        <span class="post-info-meta">${p.time}</span>
+                    </div>
+                </div>`;
             
+            document.getElementById('postDetailBody').innerHTML = `<p style="white-space:pre-wrap; line-height:1.8;">${p.content}</p>`;
+            document.getElementById('postImgArea').innerHTML = p.image ? `<img src="${p.image}" style="max-width:100%; border-radius:8px; margin-top:25px;">` : "";
+            
+            const isLiked = currentUser && p.likedBy?.includes(currentUser.userId);
+            document.getElementById('likeArea').innerHTML = `
+                <button class="btn ${isLiked?'btn-green':''}" onclick="toggleLike(${p.id})" style="display:flex; align-items:center; gap:8px;">
+                    ${isLiked?'☕':'🍵'} 커피 쏘기 ${p.likedBy?.length || 0}
+                </button>
+            `;
             renderComments(p);
         }
 
         function renderComments(post) {
             const listEl = document.getElementById('commentList');
-            const countEl = document.getElementById('commentCount');
-            const inputArea = document.getElementById('mainCommentInput');
-            
-            inputArea.style.display = currentUser ? 'flex' : 'none';
             const comments = post.comments || [];
-            let totalCount = comments.length;
-            comments.forEach(c => totalCount += (c.replies ? c.replies.length : 0));
-            countEl.innerText = totalCount;
-
+            let total = 0;
+            
             listEl.innerHTML = comments.map(c => {
-                const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
+                total += 1 + (c.replies?.length || 0);
                 const cIden = c.userId || c.nickname;
+                const cUser = allUsers.find(x => x.userId === c.userId || x.nickname === c.nickname);
+                const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
 
                 let html = `
-                <div class="comment-item">
-                    <div class="comment-info">
-                        <span class="comment-nick" onclick="showProfile('${cIden}')" style="cursor:pointer; font-weight:bold;">${c.nickname}</span>
-                        <span class="comment-time">${c.time}</span>
+                <div style="padding:15px 0; border-bottom:1px solid #f2f2f2;">
+                    <div style="display:flex; gap:12px;">
+                        <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:36px; height:36px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${cIden}')">
+                        <div style="flex:1;">
+                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${cIden}')">${c.nickname}</div>
+                            <div style="font-size:14px; margin:6px 0; color:#333; line-height:1.4;">${c.content}</div>
+                            <div style="font-size:12px; color:#999; display:flex; gap:15px; align-items:center;">
+                                <span>${c.time}</span>
+                                <span style="cursor:pointer;" onclick="toggleReplyInput(${c.id})">답글</span>
+                                <span style="cursor:pointer; color:${isCLiked?'#03c75a':''}" onclick="toggleCommentLike(${post.id}, ${c.id})">☕ ${c.likedBy?.length || 0}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="comment-text">${c.content}</div>
-                    <div class="comment-btns">
-                        <span class="c-btn ${isCLiked?'liked':''}" onclick="toggleCommentLike(${post.id}, ${c.id})">☕ 커피 ${c.likedBy?.length || 0}</span>
-                        <span class="c-btn" onclick="toggleReplyInput(${c.id})">답글 달기</span>
-                    </div>
-                    <div id="replyArea-${c.id}" class="reply-input-area">
-                        <div class="comment-input-box">
-                            <input type="text" id="rInput-${c.id}" placeholder="답글을 입력하세요...">
-                            <button class="btn btn-green" style="padding:5px 10px; font-size:12px;" onclick="addComment(${c.id})">등록</button>
+                    <div id="replyArea-${c.id}" style="display:none; margin:15px 0 0 48px;">
+                        <div class="comment-input-container" style="margin-top:0;">
+                            <textarea id="rInput-${c.id}" placeholder="답글 내용을 입력하세요"></textarea>
+                            <div class="comment-input-footer"><button class="btn btn-green" onclick="addComment(${c.id})">등록</button></div>
                         </div>
                     </div>
                 </div>`;
 
-                if (c.replies) {
-                    c.replies.forEach(r => {
-                        const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
-                        const rIden = r.userId || r.nickname;
-                        html += `
-                        <div class="reply-item">
-                            <div class="comment-info">
-                                <span class="comment-nick" onclick="showProfile('${rIden}')" style="cursor:pointer; font-weight:bold;">${r.nickname}</span>
-                                <span class="comment-time">${r.time}</span>
+                (c.replies || []).forEach(r => {
+                    const rIden = r.userId || r.nickname;
+                    const rUser = allUsers.find(x => x.userId === r.userId || x.nickname === r.nickname);
+                    const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
+                    html += `
+                    <div style="padding:15px 0 15px 48px; border-bottom:1px solid #f9f9f9; background:#fbfbfb; display:flex; gap:12px;">
+                        <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:30px; height:30px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${rIden}')">
+                        <div style="flex:1;">
+                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${rIden}')">${r.nickname}</div>
+                            <div style="font-size:14px; margin:5px 0; color:#333;">${r.content}</div>
+                            <div style="font-size:12px; color:#999;">
+                                <span>${r.time}</span>
+                                <span style="cursor:pointer; margin-left:15px; color:${isRLiked?'#03c75a':''}" onclick="toggleCommentLike(${post.id}, ${c.id}, ${r.id})">☕ ${r.likedBy?.length || 0}</span>
                             </div>
-                            <div class="comment-text">${r.content}</div>
-                            <div class="comment-btns">
-                                <span class="c-btn ${isRLiked?'liked':''}" onclick="toggleCommentLike(${post.id}, ${c.id}, ${r.id})">☕ 커피 ${r.likedBy?.length || 0}</span>
-                            </div>
-                        </div>`;
-                    });
-                }
+                        </div>
+                    </div>`;
+                });
                 return html;
             }).join('');
+            document.getElementById('commentCount').innerText = total;
+            document.getElementById('mainCommentInput').style.display = currentUser ? 'block' : 'none';
         }
 
         function addComment(parentId) {
-            if (!currentUser) return alert("로그인이 필요합니다.");
+            if(!currentUser) return alert("로그인 후 이용 가능합니다.");
             const input = parentId ? document.getElementById(`rInput-${parentId}`) : document.getElementById('cInput');
             const content = input.value.trim();
-            if (!content) return;
-
-            socket.emit('new_comment', {
-                postId: currentPostId,
-                commentId: parentId,
-                data: { userId: currentUser.userId, nickname: currentUser.nickname, content }
-            });
+            if(!content) return;
+            socket.emit('new_comment', { postId: currentPostId, commentId: parentId, data: { userId: currentUser.userId, nickname: currentUser.nickname, content } });
             input.value = "";
+            if(parentId) toggleReplyInput(parentId);
         }
 
-        function toggleReplyInput(cid) {
-            if (!currentUser) return alert("로그인이 필요합니다.");
-            const el = document.getElementById(`replyArea-${cid}`);
-            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        function toggleReplyInput(id) {
+            const el = document.getElementById(`replyArea-${id}`);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
-        function toggleCommentLike(postId, commentId, replyId = null) {
-            if (!currentUser) return alert("로그인이 필요합니다.");
-            socket.emit('toggle_comment_like', { postId, commentId, replyId, userId: currentUser.userId });
+        function toggleCommentLike(pId, cId, rId = null) {
+            if(!currentUser) return alert("로그인 후 이용 가능합니다.");
+            socket.emit('toggle_comment_like', { postId: pId, commentId: cId, replyId: rId, userId: currentUser.userId });
         }
 
-        function toggleLike(postId) { if(!currentUser) return alert("로그인 후 이용 가능합니다."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
+        function toggleLike(id) {
+            if(!currentUser) return alert("로그인 후 이용 가능합니다.");
+            socket.emit('toggle_like', { postId: id, userId: currentUser.userId });
+        }
+
+        function filterBoard(name) {
+            currentBoard = name;
+            document.getElementById('currentBoardTitle').innerText = name;
+            renderAll();
+            closePost();
+        }
+
+        function closePost() {
+            currentPostId = null;
+            document.getElementById('listView').style.display = 'block';
+            document.getElementById('postDetailView').style.display = 'none';
+        }
+
+        function switchLTab(m) {
+            authMode = m;
+            const isL = m === 'L';
+            document.getElementById('authTitle').innerText = isL ? "로그인" : "회원가입";
+            document.getElementById('nickGroup').style.display = isL ? 'none' : 'block';
+            document.getElementById('authBtn').innerText = isL ? "로그인하기" : "가입 완료";
+            document.getElementById('lTabL').classList.toggle('active', isL);
+            document.getElementById('lTabS').classList.toggle('active', !isL);
+        }
+
+        async function auth() {
+            const id = document.getElementById('uId').value.trim();
+            const pw = document.getElementById('uPw').value.trim();
+            const ni = document.getElementById('uNi').value.trim();
+            if(!id || !pw || (authMode==='S' && !ni)) return alert("모든 항목을 입력해 주세요.");
+            const res = await fetch(authMode==='L'?'/api/login':'/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:id, password:pw, nickname:ni})});
+            const d = await res.json();
+            if(d.success) {
+                if(authMode==='L') { localStorage.setItem('cafeUser', JSON.stringify(d.user)); location.reload(); }
+                else { alert("가입되었습니다! 로그인해 주세요."); switchLTab('L'); }
+            } else alert(d.message || "로그인 정보를 확인해 주세요.");
+        }
+
+        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
 
         function openSettings() {
             if(!currentUser) return;
             document.getElementById('setNick').value = currentUser.nickname;
             document.getElementById('setDesc').value = currentUser.profileDesc || "";
+            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
             document.getElementById('bgP').style.backgroundImage = currentUser.bgImg ? `url(${currentUser.bgImg})` : 'none';
             document.getElementById('bgP').innerText = currentUser.bgImg ? "" : "배너 배경 업로드";
-            document.getElementById('pfP').src = currentUser.profileImg || DEFAULT_PF;
             document.getElementById('tab1').style.display = (currentUser.role === '주인장' || currentUser.role === '점원') ? 'block' : 'none';
             showSTab(0);
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
         function showSTab(idx) {
-            document.querySelectorAll('.st-content').forEach((c, i) => c.style.display = i === idx ? 'block' : 'none');
-            document.querySelectorAll('#settingsModal .s-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
-            if(idx === 1) renderUserManagement();
+            document.getElementById('st-0').style.display = idx === 0 ? 'block' : 'none';
+            document.getElementById('st-1').style.display = idx === 1 ? 'block' : 'none';
+            document.getElementById('tab0').classList.toggle('active', idx === 0);
+            document.getElementById('tab1').classList.toggle('active', idx === 1);
+            if(idx === 1) renderUserAdmin();
         }
 
-        function renderUserManagement() {
+        function renderUserAdmin() {
             const area = document.getElementById('userListArea');
             area.innerHTML = allUsers.map(u => {
-                const isS = cafeConfig.staffList.includes(u.userId);
-                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f9f9f9;">
-                    <div><div style="font-weight:700;">${u.role==='주인장'?'👑':(isS?'⭐':'👤')} ${u.nickname}</div><div style="font-size:12px; color:#ccc;">${u.userId}</div></div>
-                    <div>${currentUser.role==='주인장' && u.userId!=='Mint_pocky' ? `<button class="btn" style="padding:5px 10px; font-size:11px; background:#f0f0f0;" onclick="manageUser('${u.userId}','${isS?'demote':'promote'}')">${isS?'강등':'고용'}</button>`:''}
-                    ${u.userId!=='Mint_pocky' && u.userId!==currentUser.userId ? `<button class="btn" style="padding:5px 10px; font-size:11px; background:#ffeded; color:#ff5e5e; margin-left:5px;" onclick="manageUser('${u.userId}','kick')">강퇴</button>`:''}</div>
+                const isStaff = cafeConfig.staffList.includes(u.userId);
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #eee;">
+                    <div>
+                        <div style="font-weight:bold;">${u.role==='주인장'?'👑':(isStaff?'⭐':'👤')} ${u.nickname}</div>
+                        <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
+                    </div>
+                    <div>
+                        ${currentUser.role==='주인장' && u.userId!=='Mint_pocky' ? `<button class="btn" style="padding:4px 8px; font-size:11px;" onclick="manageUser('${u.userId}','${isStaff?'demote':'promote'}')">${isStaff?'강등':'임명'}</button>`:''}
+                        ${u.userId!=='Mint_pocky' && u.userId!==currentUser.userId ? `<button class="btn" style="padding:4px 8px; font-size:11px; background:#ffecec; color:#ff4d4d; margin-left:5px;" onclick="manageUser('${u.userId}','kick')">강퇴</button>`:''}
+                    </div>
                 </div>`;
-            }).join('') || '<div style="padding:50px; text-align:center; color:#ccc;">멤버가 없습니다.</div>';
+            }).join('');
         }
 
-        async function manageUser(targetId, action) {
-            const res = await fetch('/api/admin/manage-user', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adminId:currentUser.userId, targetId, action}) });
-            if((await res.json()).success) { alert("처리되었습니다."); socket.emit('load_all'); }
+        async function manageUser(tId, act) {
+            if(!confirm("정말 처리하시겠습니까?")) return;
+            const res = await fetch('/api/admin/manage-user', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({adminId:currentUser.userId, targetId:tId, action:act}) });
+            if((await res.json()).success) { alert("반영되었습니다."); }
         }
 
         async function saveProfile() {
             const bg = document.getElementById('bgP').style.backgroundImage;
             const res = await fetch('/api/update-profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-                userId:currentUser.userId, nickname:document.getElementById('setNick').value, profileDesc:document.getElementById('setDesc').value, profileImg:document.getElementById('pfP').src,
-                bgImg: bg && bg!=='none' ? bg.slice(5,-2).replace(/"/g,"") : ""
+                userId: currentUser.userId, nickname: document.getElementById('setNick').value, profileDesc: document.getElementById('setDesc').value,
+                profileImg: document.getElementById('pfP').src, bgImg: bg && bg!=='none' ? bg.slice(5, -2).replace(/"/g, "") : ""
             })});
-            if((await res.json()).success) { alert("성공적으로 수정되었습니다!"); location.reload(); }
+            if((await res.json()).success) { alert("프로필이 수정되었습니다."); location.reload(); }
         }
 
-        async function auth() {
-            const id = document.getElementById('uId').value;
-            const pw = document.getElementById('uPw').value;
-            const ni = document.getElementById('uNi').value;
-            const res = await fetch(authMode==='L'?'/api/login':'/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:id, password:pw, nickname:ni})});
-            const d = await res.json();
-            if(d.success) { 
-                if(authMode==='L'){ localStorage.setItem('cafeUser', JSON.stringify(d.user)); location.reload(); } 
-                else { alert("가입을 축하합니다! 이제 로그인해 주세요."); switchLTab('L'); }
-            } else alert("정보를 다시 확인해 주세요.");
+        function pvImg(input, targetId) {
+            const file = input.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    if(targetId === 'bgP') {
+                        document.getElementById(targetId).style.backgroundImage = `url(${e.target.result})`;
+                        document.getElementById(targetId).innerText = "";
+                    } else {
+                        document.getElementById(targetId).src = e.target.result;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
         }
-
-        function switchLTab(m) { 
-            authMode = m;
-            const isL = m === 'L';
-            document.getElementById('authTitle').innerText = isL ? "반가워요!" : "처음인가요?";
-            document.getElementById('authSubTitle').innerText = isL ? "카페 에스프레소에 오신 걸 환영합니다." : "간단한 정보만으로 멤버가 될 수 있습니다.";
-            document.getElementById('nickGroup').style.display = isL ? 'none' : 'block'; 
-            document.getElementById('authBtn').innerText = isL ? '로그인하기' : '회원가입 완료';
-            document.getElementById('lTabL').classList.toggle('active', isL);
-            document.getElementById('lTabS').classList.toggle('active', !isL);
-        }
-
-        function logout() { localStorage.removeItem('cafeUser'); location.reload(); }
-        function closePost() { currentPostId = null; document.getElementById('listView').style.display='block'; document.getElementById('postDetailView').style.display='none'; }
-        function pvImg(i,t){ const f=i.files[0]; if(f){ const r=new FileReader(); r.onload=e=>{ 
-            if(t==='bgP'){ document.getElementById(t).style.backgroundImage=`url(${e.target.result})`; document.getElementById(t).innerText=""; }
-            else document.getElementById(t).src=e.target.result; 
-        }; r.readAsDataURL(f); } }
     </script>
 </body>
 </html>
