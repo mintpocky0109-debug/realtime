@@ -41,15 +41,21 @@ let cafeConfig = loadJson(CONFIG_FILE, {
     staffList: [] 
 });
 
+// 파일 저장 함수
+const saveAll = () => {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+    fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+};
+
 app.get('/write', (req, res) => { 
     res.sendFile(path.join(__dirname, 'write.html')); 
 });
 
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
-    if (!userId || !password || !nickname) {
-        return res.json({ success: false, message: "항목을 모두 입력해주세요." });
-    }
+    if (!userId || !password || !nickname) return res.json({ success: false, message: "모든 항목을 입력해주세요." });
+    
     if (users.some(u => u.userId === userId.trim())) {
         return res.json({ success: false, message: "이미 존재하는 아이디입니다." });
     }
@@ -67,7 +73,7 @@ app.post('/api/signup', (req, res) => {
         bgImg: "" 
     };
     users.push(newUser);
-    fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+    saveAll();
     res.json({ success: true });
 });
 
@@ -75,6 +81,7 @@ app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
+        // 접속 시 실시간 역할 갱신 (주인장 아이디는 무조건 주인장)
         user.role = (user.userId === "Mint_pocky") ? "주인장" : (cafeConfig.staffList.includes(user.userId) ? "점원" : "멤버");
         res.json({ success: true, user });
     } else {
@@ -93,7 +100,7 @@ app.post('/api/update-profile', (req, res) => {
         users[idx].profileImg = profileImg || DEFAULT_PF;
         users[idx].profileDesc = profileDesc;
         users[idx].bgImg = bgImg;
-        fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
+        saveAll();
         io.emit('update_users', users);
         res.json({ success: true, user: users[idx] });
     } else {
@@ -104,27 +111,19 @@ app.post('/api/update-profile', (req, res) => {
 app.post('/api/admin/manage-user', (req, res) => {
     const { adminId, targetId, action } = req.body;
     const admin = users.find(u => u.userId === adminId);
-    if (!admin || (admin.role !== '주인장' && admin.role !== '점원')) {
-        return res.json({ success: false });
-    }
+    if (!admin || (admin.role !== '주인장' && admin.role !== '점원')) return res.json({ success: false });
+
     const targetIdx = users.findIndex(u => u.userId === targetId);
-    if (targetIdx === -1) {
-        return res.json({ success: false });
-    }
+    if (targetIdx === -1) return res.json({ success: false });
 
     if (action === 'promote' && admin.role === '주인장') { 
-        if (!cafeConfig.staffList.includes(targetId)) {
-            cafeConfig.staffList.push(targetId);
-        }
+        if (!cafeConfig.staffList.includes(targetId)) cafeConfig.staffList.push(targetId);
     } else if (action === 'demote' && admin.role === '주인장') { 
         cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId); 
     } else if (action === 'kick') { 
-        if (users[targetIdx].userId !== "Mint_pocky") {
-            users.splice(targetIdx, 1); 
-        }
+        if (users[targetIdx].userId !== "Mint_pocky") users.splice(targetIdx, 1);
     }
-    fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cafeConfig, null, 2));
+    saveAll();
     io.emit('update_users', users);
     res.json({ success: true });
 });
@@ -141,7 +140,7 @@ io.on('connection', (socket) => {
             comments: [] 
         };
         posts.push(newPost);
-        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+        saveAll();
         io.emit('update_posts', posts);
     });
 
@@ -149,7 +148,7 @@ io.on('connection', (socket) => {
         const post = posts.find(p => p.id === postId);
         if (post && post.userId === userId) {
             post.content = newContent;
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            saveAll();
             io.emit('update_posts', posts);
         }
     });
@@ -158,7 +157,7 @@ io.on('connection', (socket) => {
         const idx = posts.findIndex(p => p.id === postId);
         if (idx !== -1 && (posts[idx].userId === userId || userId === "Mint_pocky")) {
             posts.splice(idx, 1);
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            saveAll();
             io.emit('update_posts', posts);
         }
     });
@@ -168,12 +167,9 @@ io.on('connection', (socket) => {
         if (post && userId) {
             if (!post.likedBy) post.likedBy = [];
             const idx = post.likedBy.indexOf(userId);
-            if (idx === -1) {
-                post.likedBy.push(userId);
-            } else {
-                post.likedBy.splice(idx, 1);
-            }
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            if (idx === -1) post.likedBy.push(userId);
+            else post.likedBy.splice(idx, 1);
+            saveAll();
             io.emit('update_posts', posts);
         }
     });
@@ -187,49 +183,32 @@ io.on('connection', (socket) => {
             const parent = post.comments.find(c => c.id === commentId);
             if (parent) {
                 if (!parent.replies) parent.replies = [];
-                parent.replies.push({ 
-                    id: Date.now(), 
-                    ...data, 
-                    time: new Date().toLocaleString(), 
-                    likedBy: [] 
-                });
+                parent.replies.push({ id: Date.now(), ...data, time: new Date().toLocaleString(), likedBy: [] });
             }
         } else {
-            post.comments.push({ 
-                id: Date.now(), 
-                ...data, 
-                time: new Date().toLocaleString(), 
-                likedBy: [], 
-                replies: [] 
-            });
+            post.comments.push({ id: Date.now(), ...data, time: new Date().toLocaleString(), likedBy: [], replies: [] });
         }
-        fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+        saveAll();
         io.emit('update_posts', posts);
     });
 
     socket.on('toggle_comment_like', ({ postId, commentId, replyId, userId }) => {
         const post = posts.find(p => p.id === postId);
         if (!post || !userId) return;
-        
         const comment = post.comments.find(c => c.id === commentId);
         if (!comment) return;
-        
         let target = replyId ? (comment.replies || []).find(r => r.id === replyId) : comment;
         if (target) {
             if (!target.likedBy) target.likedBy = [];
             const idx = target.likedBy.indexOf(userId);
-            if (idx === -1) {
-                target.likedBy.push(userId);
-            } else {
-                target.likedBy.splice(idx, 1);
-            }
-            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            if (idx === -1) target.likedBy.push(userId);
+            else target.likedBy.splice(idx, 1);
+            saveAll();
             io.emit('update_posts', posts);
         }
     });
 });
 
-// 마지막 부분을 기존 코드와 동일하게 0.0.0.0으로 수정했습니다.
 server.listen(3000, "0.0.0.0", () => {
-    console.log("Server running");
+    console.log("Server is running on http://0.0.0.0:3000");
 });
