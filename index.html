@@ -96,7 +96,7 @@
 
     <div id="profileModal" class="modal" onclick="this.style.display='none'">
         <div style="background:white; width:360px; border-radius:30px; overflow:hidden;" onclick="event.stopPropagation()">
-            <div id="p-bg" style="height:120px; background-color:var(--accent-color); background-position:center; background-size:cover;"></div>
+            <div id="p-bg" style="height:120px; background-color:#ddd; background-position:center; background-size:cover;"></div>
             <div style="padding:30px; text-align:center;">
                 <img id="p-img" style="width:100px; height:100px; border-radius:50%; border:5px solid white; margin-top:-70px; background:white; object-fit:cover;">
                 <h3 id="p-nick" style="margin:15px 0 5px; font-size:20px;"></h3>
@@ -126,6 +126,25 @@
         socket.on('update_posts', p => { allPosts = p; renderPosts(); if(currentPostId) renderPostDetail(currentPostId); });
         socket.on('update_users', u => { allUsers = u; updateAuthUI(); });
 
+        // 프로필 표시 함수 (핵심: ID가 없으면 닉네임으로 찾음)
+        function showProfile(idOrNick) {
+            if(!idOrNick) return alert("유저 정보를 찾을 수 없습니다.");
+            
+            // 1. userId로 검색 -> 2. 없으면 nickname으로 검색
+            let user = allUsers.find(u => u.userId === idOrNick);
+            if(!user) user = allUsers.find(u => u.nickname === idOrNick);
+
+            if(!user) return alert("탈퇴했거나 존재하지 않는 유저입니다.");
+
+            const badge = user.role === '주인장' ? '👑 ' : (user.role === '점원' ? '⭐ ' : '');
+            document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
+            document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
+            document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
+            document.getElementById('p-nick').innerText = badge + user.nickname;
+            document.getElementById('p-desc').innerText = user.profileDesc || "소개가 없습니다.";
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
         function renderAll() {
             const boardListEl = document.getElementById('boardList');
             if(boardListEl) {
@@ -140,7 +159,7 @@
             const h = document.getElementById('headerAuth');
             if(currentUser) {
                 const badge = currentUser.role === '주인장' ? '👑 ' : (currentUser.role === '점원' ? '⭐ ' : '');
-                h.innerHTML = `<span onclick="showProfileById('${currentUser.userId}')" style="cursor:pointer; font-weight:700;">${badge}${currentUser.nickname}</span> <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; margin-left:15px; background:#fefefe; border:1px solid #eee;">로그아웃</button>`;
+                h.innerHTML = `<span onclick="showProfile('${currentUser.userId}')" style="cursor:pointer; font-weight:700;">${badge}${currentUser.nickname}</span> <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; margin-left:15px; background:#fefefe; border:1px solid #eee;">로그아웃</button>`;
                 document.getElementById('sideMenu').style.display = 'block';
             } else {
                 h.innerHTML = `<button class="btn btn-green" onclick="document.getElementById('loginModal').style.display='flex'">로그인</button>`;
@@ -171,15 +190,17 @@
 
         function displayPosts(postsArr) {
             document.getElementById('postList').innerHTML = postsArr.map(p => {
-                const u = allUsers.find(x => x.nickname === p.nickname || x.userId === p.userId);
-                const uId = u ? u.userId : '';
+                const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
                 const badge = u?.role === '주인장' ? '👑' : (u?.role === '점원' ? '⭐' : '');
                 const photoIcon = (p.image && p.image !== "") ? '<span style="font-size:12px; margin-left:5px;">🖼️</span>' : '';
+                // 프로필 조회를 위해 userId가 있으면 사용, 없으면 nickname 사용
+                const identifier = p.userId || p.nickname;
+
                 return `
                     <div class="post-list-item" onclick="openPost(${p.id})">
                         <div style="font-weight:700; font-size:18px; color:#2c3e50; margin-bottom:8px;">${p.content.substring(0,38)}${p.content.length>38?'...':''}${photoIcon}</div>
                         <div style="display:flex; align-items:center; font-size:13px; color:#95a5a6;">
-                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfileById('${uId}')" style="color:var(--primary-color); font-weight:700; cursor:pointer;">${badge}${p.nickname}</span>
+                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${identifier}')" style="color:var(--primary-color); font-weight:700; cursor:pointer;">${badge}${p.nickname}</span>
                             <span style="margin:0 10px; opacity:0.3;">|</span>
                             <span>${p.time.split(',')[0]}</span>
                         </div>
@@ -197,11 +218,10 @@
 
         function renderPostDetail(id) {
             const p = allPosts.find(x => x.id === id); if(!p) return;
-            const author = allUsers.find(u => u.userId === p.userId || u.nickname === p.nickname);
-            const authorId = author ? author.userId : '';
-            
+            const identifier = p.userId || p.nickname;
+
             document.getElementById('postDetailBody').innerHTML = `
-                <h2 style="margin-bottom:10px; cursor:pointer;" onclick="showProfileById('${authorId}')">${p.nickname}님의 기록</h2>
+                <h2 style="margin-bottom:10px; cursor:pointer; display:inline-block;" onclick="showProfile('${identifier}')">${p.nickname}님의 기록</h2>
                 <div style="font-size:13px; color:#aaa; margin-bottom:30px;">${p.time}</div>
                 <p style="white-space:pre-wrap; font-size:16px; line-height:1.8; color:#444;">${p.content}</p>`;
             document.getElementById('postImgArea').innerHTML = (p.image && p.image !== "") ? `<img src="${p.image}" style="max-width:100%; border-radius:15px; margin-top:25px; box-shadow:0 10px 20px rgba(0,0,0,0.05);">` : "";
@@ -224,10 +244,12 @@
 
             listEl.innerHTML = comments.map(c => {
                 const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
+                const cIden = c.userId || c.nickname;
+
                 let html = `
                 <div class="comment-item">
                     <div class="comment-info">
-                        <span class="comment-nick" onclick="showProfileById('${c.userId}')" style="cursor:pointer; font-weight:bold;">${c.nickname}</span>
+                        <span class="comment-nick" onclick="showProfile('${cIden}')" style="cursor:pointer; font-weight:bold;">${c.nickname}</span>
                         <span class="comment-time">${c.time}</span>
                     </div>
                     <div class="comment-text">${c.content}</div>
@@ -246,10 +268,11 @@
                 if (c.replies) {
                     c.replies.forEach(r => {
                         const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
+                        const rIden = r.userId || r.nickname;
                         html += `
                         <div class="reply-item">
                             <div class="comment-info">
-                                <span class="comment-nick" onclick="showProfileById('${r.userId}')" style="cursor:pointer; font-weight:bold;">${r.nickname}</span>
+                                <span class="comment-nick" onclick="showProfile('${rIden}')" style="cursor:pointer; font-weight:bold;">${r.nickname}</span>
                                 <span class="comment-time">${r.time}</span>
                             </div>
                             <div class="comment-text">${r.content}</div>
@@ -289,21 +312,6 @@
         }
 
         function toggleLike(postId) { if(!currentUser) return alert("로그인 후 이용 가능합니다."); socket.emit('toggle_like', { postId, userId: currentUser.userId }); }
-
-        function showProfileById(uId) {
-            if(!uId) {
-                // ID가 없는 경우 닉네임으로 한 번 더 검색 (백업 로직)
-                return alert("유저 정보를 찾을 수 없습니다.");
-            }
-            const u = allUsers.find(x => x.userId === uId);
-            if(!u) return alert("정보를 불러올 수 없습니다.");
-            
-            document.getElementById('p-bg').style.backgroundImage = u.bgImg ? `url(${u.bgImg})` : 'none';
-            document.getElementById('p-img').src = u.profileImg || DEFAULT_PF;
-            document.getElementById('p-nick').innerText = (u.role==='주인장'?'👑 ':(u.role==='점원'?'⭐ ':'')) + u.nickname;
-            document.getElementById('p-desc').innerText = u.profileDesc || "소개가 없습니다.";
-            document.getElementById('profileModal').style.display = 'flex';
-        }
 
         function openSettings() {
             if(!currentUser) return;
