@@ -32,8 +32,11 @@ app.get('/write', (req, res) => { res.sendFile(path.join(__dirname, 'write.html'
 
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
-    if (!userId || !password || !nickname) return res.json({ success: false, message: "항목 누락" });
-    if (users.some(u => u.userId === userId.trim())) return res.json({ success: false, message: "중복 아이디" });
+    if (!userId || !password || !nickname) return res.json({ success: false, message: "항목을 모두 입력해주세요." });
+    if (users.some(u => u.userId === userId.trim())) return res.json({ success: false, message: "이미 존재하는 아이디입니다." });
+    // 닉네임 중복 체크 추가
+    if (users.some(u => u.nickname === nickname.trim())) return res.json({ success: false, message: "이미 사용 중인 닉네임입니다." });
+    
     const newUser = { userId: userId.trim(), password: password.trim(), nickname: nickname.trim(), role: userId.trim() === "Mint_pocky" ? "주인장" : "멤버", profileImg: DEFAULT_PF, profileDesc: "반갑습니다!", bgImg: "" };
     users.push(newUser);
     fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
@@ -46,13 +49,17 @@ app.post('/api/login', (req, res) => {
     if (user) {
         user.role = (user.userId === "Mint_pocky") ? "주인장" : (cafeConfig.staffList.includes(user.userId) ? "점원" : "멤버");
         res.json({ success: true, user });
-    } else res.json({ success: false });
+    } else res.json({ success: false, message: "아이디 또는 비밀번호가 틀렸습니다." });
 });
 
 app.post('/api/update-profile', (req, res) => {
     const { userId, nickname, profileImg, profileDesc, bgImg } = req.body;
     const idx = users.findIndex(u => u.userId === userId);
     if (idx !== -1) {
+        // 프로필 수정 시에도 닉네임 중복 체크 (본인 제외)
+        if (users.some((u, i) => i !== idx && u.nickname === nickname.trim())) {
+            return res.json({ success: false, message: "이미 사용 중인 닉네임입니다." });
+        }
         users[idx].nickname = nickname;
         users[idx].profileImg = profileImg || DEFAULT_PF;
         users[idx].profileDesc = profileDesc;
@@ -81,12 +88,34 @@ app.post('/api/admin/manage-user', (req, res) => {
 
 io.on('connection', (socket) => {
     socket.emit('load_all', { posts, config: cafeConfig, users });
+    
     socket.on('new_post', (data) => {
         const newPost = { id: Date.now(), ...data, time: new Date().toLocaleString(), likedBy: [], comments: [] };
         posts.push(newPost);
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
+
+    // 게시글 수정 로직 추가
+    socket.on('edit_post', ({ postId, userId, newContent }) => {
+        const post = posts.find(p => p.id === postId);
+        if (post && post.userId === userId) {
+            post.content = newContent;
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            io.emit('update_posts', posts);
+        }
+    });
+
+    // 게시글 삭제 로직 추가
+    socket.on('delete_post', ({ postId, userId }) => {
+        const idx = posts.findIndex(p => p.id === postId);
+        if (idx !== -1 && (posts[idx].userId === userId || userId === "Mint_pocky")) {
+            posts.splice(idx, 1);
+            fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+            io.emit('update_posts', posts);
+        }
+    });
+
     socket.on('toggle_like', ({ postId, userId }) => {
         const post = posts.find(p => p.id === postId);
         if (post && userId) {
@@ -98,6 +127,7 @@ io.on('connection', (socket) => {
             io.emit('update_posts', posts);
         }
     });
+
     socket.on('new_comment', ({ postId, commentId, data }) => {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -114,6 +144,7 @@ io.on('connection', (socket) => {
         fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
         io.emit('update_posts', posts);
     });
+
     socket.on('toggle_comment_like', ({ postId, commentId, replyId, userId }) => {
         const post = posts.find(p => p.id === postId);
         if (!post || !userId) return;
