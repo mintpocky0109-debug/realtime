@@ -296,7 +296,7 @@
             openProfileId = user.userId;
             
             const isOwner = user.userId === "Mint_pocky";
-            const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(user.userId);
+            const isStaff = cafeConfig.staffList.includes(user.userId);
             const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
             
             document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
@@ -335,12 +335,12 @@
             const h = document.getElementById('headerAuth');
             if (currentUser) {
                 const isOwner = currentUser.userId === "Mint_pocky";
-                const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(currentUser.userId);
+                const isStaff = cafeConfig.staffList.includes(currentUser.userId);
                 const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
                 
                 h.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span data-user="${currentUser.userId}" onclick="showProfile(this.getAttribute('data-user'))" style="cursor:pointer; font-weight:700; color:#333;">
+                        <span onclick="showProfile('${currentUser.userId}')" style="cursor:pointer; font-weight:700; color:#333;">
                             ${badge}${currentUser.nickname}
                         </span>
                         <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; background:#fff; border:1px solid #ddd; color:#888;">로그아웃</button>
@@ -364,13 +364,13 @@
             const sorted = [...arr].sort((a, b) => b.id - a.id);
             
             if (sorted.length === 0) {
-                listEl.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:120px 0; color:#ccc; font-size:16px;">등록된 게시글물이 없습니다.</td></tr>';
+                listEl.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:120px 0; color:#ccc; font-size:16px;">등록된 게시글이 없습니다.</td></tr>';
                 return;
             }
 
             listEl.innerHTML = sorted.map((p, idx) => {
                 const isOwner = p.userId === "Mint_pocky"; 
-                const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(p.userId);
+                const isStaff = cafeConfig.staffList.includes(p.userId);
                 const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
                 
                 const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
@@ -385,7 +385,7 @@
                             ${cCount > 0 ? `<span class="comment-count-badge">[${cCount}]</span>` : ''}
                         </td>
                         <td class="td-author">
-                            <span class="clickable-nick" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
+                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${p.userId || p.nickname}')">
                                 ${badge}${p.nickname}
                             </span>
                         </td>
@@ -417,21 +417,23 @@
             const u = allUsers.find(x => x.userId === p.userId);
             
             const isOwner = p.userId === "Mint_pocky";
-            const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(p.userId);
+            const isStaff = cafeConfig.staffList.includes(p.userId);
             const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
             
-            const canManage = currentUser && (currentUser.userId === p.userId || currentUser.role === '주인장' || currentUser.role === '점원');
+            // 본인 여부 확인 (userId가 없었던 예전 데이터까지 포괄하기 위해 nickname도 비교)
+            const isMine = currentUser && (currentUser.userId == p.userId || currentUser.nickname == p.nickname);
+            const canManage = currentUser && (isMine || currentUser.role === '주인장' || currentUser.role === '점원');
 
             document.getElementById('postDetailHeader').innerHTML = `
                 <div class="post-header-bar">
-                    <img src="${u?.profileImg || DEFAULT_PF}" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))" style="cursor:pointer;">
+                    <img src="${u?.profileImg || DEFAULT_PF}" onclick="showProfile('${p.userId || p.nickname}')" style="cursor:pointer;">
                     <div class="post-info-text">
-                        <span class="post-info-nick" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${badge}${p.nickname}</span>
+                        <span class="post-info-nick" onclick="showProfile('${p.userId || p.nickname}')">${badge}${p.nickname}</span>
                         <span class="post-info-meta">${p.board} | ${p.time}</span>
                     </div>
                     ${canManage ? `
                     <div class="post-actions">
-                        ${currentUser.userId === p.userId ? `<span onclick="startEdit()">수정</span>` : ''}
+                        ${isMine ? `<span onclick="startEdit()">수정</span>` : ''}
                         <span onclick="deletePost(${p.id})">삭제</span>
                     </div>` : ''}
                 </div>`;
@@ -491,16 +493,22 @@
                 const cUser = allUsers.find(x => x.userId === c.userId);
                 const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
                 
+                // 댓글 권한 확인
+                const isMineC = currentUser && (currentUser.userId == c.userId || currentUser.nickname == c.nickname);
+                const canManageC = currentUser && (isMineC || currentUser.role === '주인장' || currentUser.role === '점원');
+                
                 let commentHtml = `
                 <div style="padding:20px 0; border-bottom:1px solid #f0f0f0;">
                     <div style="display:flex; gap:15px;">
-                        <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:40px; height:40px; border-radius:50%; cursor:pointer; object-fit:cover;" data-user="${c.userId || c.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
+                        <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:40px; height:40px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${c.userId || c.nickname}')">
                         <div style="flex:1;">
-                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" data-user="${c.userId || c.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${c.nickname}</div>
+                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" onclick="showProfile('${c.userId || c.nickname}')">${c.nickname}</div>
                             <div style="font-size:15px; margin:8px 0; color:#333; line-height:1.5; white-space:pre-wrap;">${c.content}</div>
                             <div style="font-size:12px; color:#999; display:flex; gap:15px; align-items:center;">
                                 <span>${c.time}</span>
                                 <span style="cursor:pointer;" onclick="toggleReplyInput(${c.id})">답글 쓰기</span>
+                                ${isMineC ? `<span style="cursor:pointer;" onclick="editComment(${post.id}, ${c.id})">수정</span>` : ''}
+                                ${canManageC ? `<span style="cursor:pointer;" onclick="deleteComment(${post.id}, ${c.id})">삭제</span>` : ''}
                                 <span style="cursor:pointer; color:${isCLiked ? 'var(--naver-green)' : ''}" onclick="toggleCommentLike(${post.id}, ${c.id})">☕ ${c.likedBy?.length || 0}</span>
                             </div>
                         </div>
@@ -516,14 +524,21 @@
                 (c.replies || []).forEach(r => {
                     const rUser = allUsers.find(x => x.userId === r.userId);
                     const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
+                    
+                    // 답글 권한 확인
+                    const isMineR = currentUser && (currentUser.userId == r.userId || currentUser.nickname == r.nickname);
+                    const canManageR = currentUser && (isMineR || currentUser.role === '주인장' || currentUser.role === '점원');
+
                     commentHtml += `
                     <div style="padding:20px 20px 20px 55px; border-bottom:1px solid #f5f5f5; background:#f9f9f9; display:flex; gap:12px;">
-                        <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:32px; height:32px; border-radius:50%; cursor:pointer; object-fit:cover;" data-user="${r.userId || r.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
+                        <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:32px; height:32px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${r.userId || r.nickname}')">
                         <div style="flex:1;">
-                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" data-user="${r.userId || r.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${r.nickname}</div>
+                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${r.userId || r.nickname}')">${r.nickname}</div>
                             <div style="font-size:14px; margin:6px 0; color:#444; line-height:1.5; white-space:pre-wrap;">${r.content}</div>
-                            <div style="font-size:12px; color:#999;">
+                            <div style="font-size:12px; color:#999; display:flex; align-items:center;">
                                 <span>${r.time}</span>
+                                ${isMineR ? `<span style="cursor:pointer; margin-left:15px;" onclick="editComment(${post.id}, ${c.id}, ${r.id})">수정</span>` : ''}
+                                ${canManageR ? `<span style="cursor:pointer; margin-left:15px;" onclick="deleteComment(${post.id}, ${c.id}, ${r.id})">삭제</span>` : ''}
                                 <span style="cursor:pointer; margin-left:15px; color:${isRLiked ? 'var(--naver-green)' : ''}" onclick="toggleCommentLike(${post.id}, ${c.id}, ${r.id})">☕ ${r.likedBy?.length || 0}</span>
                             </div>
                         </div>
@@ -535,6 +550,34 @@
             listEl.innerHTML = html;
             document.getElementById('commentCount').innerText = totalCount;
             document.getElementById('mainCommentInput').style.display = currentUser ? 'block' : 'none';
+        }
+
+        // 댓글/답글 수정 기능 추가
+        function editComment(postId, commentId, replyId = null) {
+            const p = allPosts.find(x => x.id === postId);
+            if (!p) return;
+            const c = p.comments.find(x => x.id === commentId);
+            if (!c) return;
+            const target = replyId ? c.replies.find(x => x.id === replyId) : c;
+            if (!target) return;
+
+            const newContent = prompt("수정할 내용을 입력해주세요:", target.content);
+            if (newContent !== null && newContent.trim() !== "") {
+                socket.emit('edit_comment', { 
+                    postId, commentId, replyId, 
+                    userId: currentUser.userId, 
+                    newContent: newContent.trim() 
+                });
+            }
+        }
+
+        // 댓글/답글 삭제 기능 추가
+        function deleteComment(postId, commentId, replyId = null) {
+            if (!confirm("이 댓글을 삭제하시겠습니까?")) return;
+            socket.emit('delete_comment', { 
+                postId, commentId, replyId, 
+                userId: currentUser.userId 
+            });
         }
 
         function addComment(parentId) {

@@ -52,11 +52,10 @@ app.get('/write', (req, res) => {
     res.sendFile(path.join(__dirname, 'write.html')); 
 });
 
-// [추가] 특정 유저 정보 가져오기 API
+// 특정 유저 정보 가져오기 API
 app.get('/api/user/:userId', (req, res) => {
     const user = users.find(u => u.userId === req.params.userId);
     if (user) {
-        // 보안을 위해 비밀번호(password)는 제외하고 전송합니다.
         const { password, ...userProfile } = user;
         res.json({ success: true, user: userProfile });
     } else {
@@ -93,7 +92,6 @@ app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
-        // 접속 시 실시간 역할 갱신 (주인장 아이디는 무조건 주인장)
         user.role = (user.userId === "Mint_pocky") ? "주인장" : (cafeConfig.staffList.includes(user.userId) ? "점원" : "멤버");
         res.json({ success: true, user });
     } else {
@@ -167,7 +165,7 @@ io.on('connection', (socket) => {
 
     socket.on('delete_post', ({ postId, userId }) => {
         const idx = posts.findIndex(p => p.id === postId);
-        if (idx !== -1 && (posts[idx].userId === userId || userId === "Mint_pocky")) {
+        if (idx !== -1 && (posts[idx].userId === userId || userId === "Mint_pocky" || cafeConfig.staffList.includes(userId))) {
             posts.splice(idx, 1);
             saveAll();
             io.emit('update_posts', posts);
@@ -186,6 +184,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 댓글 및 답글 생성
     socket.on('new_comment', ({ postId, commentId, data }) => {
         const post = posts.find(p => p.id === postId);
         if (!post) return;
@@ -202,6 +201,47 @@ io.on('connection', (socket) => {
         }
         saveAll();
         io.emit('update_posts', posts);
+    });
+
+    // 댓글 및 답글 수정
+    socket.on('edit_comment', ({ postId, commentId, replyId, userId, newContent }) => {
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        const comment = post.comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        let target = replyId ? (comment.replies || []).find(r => r.id === replyId) : comment;
+        if (target && target.userId === userId) {
+            target.content = newContent;
+            saveAll();
+            io.emit('update_posts', posts);
+        }
+    });
+
+    // 댓글 및 답글 삭제
+    socket.on('delete_comment', ({ postId, commentId, replyId, userId }) => {
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        const comment = post.comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        const isAuthorized = (targetUserId) => (targetUserId === userId || userId === "Mint_pocky" || cafeConfig.staffList.includes(userId));
+
+        if (replyId) {
+            const rIdx = (comment.replies || []).findIndex(r => r.id === replyId);
+            if (rIdx !== -1 && isAuthorized(comment.replies[rIdx].userId)) {
+                comment.replies.splice(rIdx, 1);
+                saveAll();
+                io.emit('update_posts', posts);
+            }
+        } else {
+            const cIdx = post.comments.findIndex(c => c.id === commentId);
+            if (cIdx !== -1 && isAuthorized(post.comments[cIdx].userId)) {
+                post.comments.splice(cIdx, 1);
+                saveAll();
+                io.emit('update_posts', posts);
+            }
+        }
     });
 
     socket.on('toggle_comment_like', ({ postId, commentId, replyId, userId }) => {
