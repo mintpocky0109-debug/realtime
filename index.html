@@ -212,9 +212,9 @@
     <div id="settingsModal" class="modal">
         <div class="modal-content" style="width:480px; padding:35px; max-height:85vh; overflow-y:auto;">
             <h2 style="margin-top:0; margin-bottom:25px;">카페 설정</h2>
-            <div style="display:flex; gap:15px; border-bottom:1px solid #eee; margin-bottom:25px;">
-                <div id="tab0" class="s-tab active" style="flex:none; padding:10px 20px;" onclick="showSTab(0)">프로필 관리</div>
-                <div id="tab1" class="s-tab" style="flex:none; padding:10px 20px; display:none;" onclick="showSTab(1)">멤버 관리</div>
+            <div style="display:flex; border-bottom:1px solid #eee; margin-bottom:25px; gap:0;">
+                <div id="tab0" class="s-tab active" style="flex:1; padding:12px 0;" onclick="showSTab(0)">프로필 관리</div>
+                <div id="tab1" class="s-tab" style="flex:1; padding:12px 0; display:none;" onclick="showSTab(1)">멤버 관리</div>
             </div>
             
             <div id="st-0">
@@ -262,7 +262,7 @@
                     currentUser = me; 
                     localStorage.setItem('cafeUser', JSON.stringify(me)); 
                 } else if (me && me.isBanned) {
-                    logout(); // 강퇴당했으면 로그아웃 처리
+                    logout();
                 }
             }
             renderAll(); 
@@ -306,7 +306,7 @@
         function showProfile(idOrNick) {
             if (!idOrNick || idOrNick === 'undefined') return alert("유저 정보를 확인할 수 없습니다.");
 
-            let user = allUsers.find(u => u.userId == idOrNick) || allUsers.find(u => u.nickname == idOrNick);
+            let user = allUsers.find(u => u.userId == idOrNick || u.nickname == idOrNick);
             if (!user) return alert("해당 유저 정보를 찾을 수 없습니다.");
             
             openProfileId = user.userId;
@@ -385,8 +385,9 @@
             }
 
             listEl.innerHTML = sorted.map((p, idx) => {
-                const isOwner = p.userId === "Mint_pocky"; 
-                const isStaff = cafeConfig.staffList.includes(p.userId);
+                const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
+                const isOwner = u ? u.userId === "Mint_pocky" : p.nickname === "Mint_pocky";
+                const isStaff = u ? cafeConfig.staffList.includes(u.userId) : false;
                 const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
                 
                 const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
@@ -430,10 +431,10 @@
         function renderPostDetail(id) {
             const p = allPosts.find(x => x.id === id); 
             if (!p) return;
-            const u = allUsers.find(x => x.userId === p.userId);
             
-            const isOwner = p.userId === "Mint_pocky";
-            const isStaff = cafeConfig.staffList.includes(p.userId);
+            const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
+            const isOwner = u ? u.userId === "Mint_pocky" : p.nickname === "Mint_pocky";
+            const isStaff = u ? cafeConfig.staffList.includes(u.userId) : false;
             const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
             
             const isMine = currentUser && (currentUser.userId == p.userId || currentUser.nickname == p.nickname);
@@ -472,7 +473,6 @@
             document.getElementById('postEditView').style.display = 'block';
             document.getElementById('editArea').value = p.content;
             
-            // 사진 수정 초기화
             currentEditImg = p.image || null;
             updateEditImgPreview();
         }
@@ -539,10 +539,10 @@
             
             let html = comments.map(c => {
                 totalCount += 1 + (c.replies?.length || 0);
-                const cUser = allUsers.find(x => x.userId === c.userId);
+                const cUser = allUsers.find(x => x.userId === c.userId || x.nickname === c.nickname);
                 
-                const isOwnerC = c.userId === "Mint_pocky";
-                const isStaffC = cafeConfig.staffList.includes(c.userId);
+                const isOwnerC = cUser ? cUser.userId === "Mint_pocky" : c.nickname === "Mint_pocky";
+                const isStaffC = cUser ? cafeConfig.staffList.includes(cUser.userId) : false;
                 const badgeC = isOwnerC ? '👑 ' : (isStaffC ? '⭐ ' : '');
 
                 const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
@@ -574,10 +574,10 @@
                 </div>`;
 
                 (c.replies || []).forEach(r => {
-                    const rUser = allUsers.find(x => x.userId === r.userId);
+                    const rUser = allUsers.find(x => x.userId === r.userId || x.nickname === r.nickname);
                     
-                    const isOwnerR = r.userId === "Mint_pocky";
-                    const isStaffR = cafeConfig.staffList.includes(r.userId);
+                    const isOwnerR = rUser ? rUser.userId === "Mint_pocky" : r.nickname === "Mint_pocky";
+                    const isStaffR = rUser ? cafeConfig.staffList.includes(rUser.userId) : false;
                     const badgeR = isOwnerR ? '👑 ' : (isStaffR ? '⭐ ' : '');
 
                     const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
@@ -736,7 +736,8 @@
 
         function renderUserAdmin() {
             const area = document.getElementById('userListArea');
-            let html = '<h3 style="font-size:15px; margin-bottom:15px; color:var(--naver-green);">활동 중인 멤버</h3>';
+            // '활동 중인 멤버', '강퇴된 멤버' 텍스트가 벽에 붙지 않게 margin(여백) 추가
+            let html = '<h3 style="font-size:15px; margin:20px 15px 15px 15px; color:var(--naver-green);">활동 중인 멤버</h3>';
             
             const activeUsers = allUsers.filter(u => !u.isBanned);
             const bannedUsers = allUsers.filter(u => u.isBanned);
@@ -763,7 +764,7 @@
             }).join('');
 
             if (bannedUsers.length > 0) {
-                html += '<h3 style="font-size:15px; margin:25px 0 15px; color:#ff4d4d;">강퇴된 멤버</h3>';
+                html += '<h3 style="font-size:15px; margin:30px 15px 15px 15px; color:#ff4d4d;">강퇴된 멤버</h3>';
                 html += bannedUsers.map(u => {
                     return `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f5f5f5; background:#fff5f5;">
