@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>☕ 카페 에스프레소</title>
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#03c75a">
     <style>
         /* [전체 공통 스타일] */
         :root { 
@@ -15,7 +17,7 @@
         }
 
         body { margin:0; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background-color: var(--bg-gray); color: var(--text-main); }
-        textarea, input { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; } /* 폰트 통일 */
+        textarea, input { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
         
         /* 헤더 스타일 */
         .header { background: #fff; border-bottom: 1px solid #ddd; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; position: sticky; top: 0; z-index: 1000; }
@@ -80,7 +82,7 @@
         .input-style { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; outline: none; font-family: inherit; }
         .input-style:focus { border-color: var(--naver-green); }
 
-        .s-tab { flex:1; text-align:center; padding:12px; cursor:pointer; font-size:14px; color:#888; border-bottom:2px solid transparent; }
+        .s-tab { flex:1; text-align:center; padding:12px 5px; cursor:pointer; font-size:14px; color:#888; border-bottom:2px solid transparent; word-break: keep-all; }
         .s-tab.active { color: var(--naver-green); border-bottom: 2px solid var(--naver-green); font-weight: bold; }
 
         .comment-count-badge { color: #ff4d4d; font-weight: bold; font-size: 12px; margin-left: 5px; }
@@ -107,7 +109,7 @@
             .board-table td { padding: 12px 5px; font-size: 13px; }
             .td-num { width: 35px; font-size: 11px; }
             .td-author { width: 80px; font-size: 12px; }
-            .td-date { display: none; } /* 모바일에서는 날짜 숨김처리로 넓이 확보 */
+            .td-date { display: none; }
             .td-title { padding-left: 5px !important; }
             
             .search-area { flex-direction: column; padding: 15px 0; border: none; }
@@ -120,6 +122,8 @@
             
             .modal-content { width: 92% !important; padding: 25px !important; max-height: 90vh; overflow-y: auto; }
             .profile-stats { gap: 15px; }
+            
+            .s-tab { font-size: 13px; padding: 10px 2px; }
         }
     </style>
 </head>
@@ -246,11 +250,12 @@
     </div>
 
     <div id="settingsModal" class="modal">
-        <div class="modal-content" style="width:480px; padding:35px;">
+        <div class="modal-content" style="width:500px; padding:35px;">
             <h2 style="margin-top:0; margin-bottom:25px;">카페 설정</h2>
             <div style="display:flex; border-bottom:1px solid #eee; margin-bottom:25px; gap:0;">
-                <div id="tab0" class="s-tab active" style="flex:1; padding:12px 0;" onclick="showSTab(0)">프로필 관리</div>
-                <div id="tab1" class="s-tab" style="flex:1; padding:12px 0; display:none;" onclick="showSTab(1)">멤버 관리</div>
+                <div id="tab0" class="s-tab active" onclick="showSTab(0)">프로필 관리</div>
+                <div id="tab1" class="s-tab" style="display:none;" onclick="showSTab(1)">멤버 관리</div>
+                <div id="tab2" class="s-tab" style="display:none;" onclick="showSTab(2)">추방 관리</div>
             </div>
             
             <div id="st-0">
@@ -267,7 +272,11 @@
             </div>
             
             <div id="st-1" style="display:none;">
-                <div id="userListArea" style="border:1px solid #eee; border-radius:8px; max-height:400px; overflow-y:auto;"></div>
+                <div id="activeUserList" style="border:1px solid #eee; border-radius:8px; max-height:400px; overflow-y:auto; background:#fcfcfc;"></div>
+            </div>
+
+            <div id="st-2" style="display:none;">
+                <div id="bannedUserList" style="border:1px solid #eee; border-radius:8px; max-height:400px; overflow-y:auto; background:#fcfcfc;"></div>
             </div>
             
             <button class="btn" style="width:100%; margin-top:25px; background:#f5f5f5;" onclick="document.getElementById('settingsModal').style.display='none'">닫기</button>
@@ -327,16 +336,12 @@
             if (document.getElementById('settingsModal').style.display === 'flex') renderUserAdmin();
         });
 
-        // 작성 글 및 받은 커피(좋아요) 정상 집계 로직
         function updateProfileStats(userId) {
             if (!userId) return;
             const user = allUsers.find(u => u.userId === userId);
             if (!user) return;
 
-            // 유저가 올린 모든 글
             const userPosts = allPosts.filter(p => p.userId === userId || p.nickname === user.nickname);
-            
-            // 모든 글 및 댓글에서 해당 유저가 받은 좋아요 수 합산
             let totalLikes = 0;
             allPosts.forEach(p => {
                 if (p.userId === userId || p.nickname === user.nickname) {
@@ -356,19 +361,16 @@
             
             const postStat = document.getElementById('stat-posts');
             const likeStat = document.getElementById('stat-likes');
-            
             if (postStat) postStat.innerText = userPosts.length;
             if (likeStat) likeStat.innerText = totalLikes;
         }
 
         function showProfile(idOrNick) {
             if (!idOrNick || idOrNick === 'undefined') return alert("유저 정보를 확인할 수 없습니다.");
-
             let user = allUsers.find(u => u.userId == idOrNick || u.nickname == idOrNick);
             if (!user) return alert("해당 유저 정보를 찾을 수 없습니다.");
             
             openProfileId = user.userId;
-            
             const isOwner = user.userId === "Mint_pocky";
             const isStaff = cafeConfig.staffList.includes(user.userId);
             const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
@@ -380,7 +382,6 @@
             document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
             
             document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
-            
             updateProfileStats(user.userId);
             document.getElementById('profileModal').style.display = 'flex';
         }
@@ -436,21 +437,17 @@
         function displayPosts(arr) {
             const listEl = document.getElementById('postList');
             const sorted = [...arr].sort((a, b) => b.id - a.id);
-            
             if (sorted.length === 0) {
                 listEl.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:120px 0; color:#ccc; font-size:16px;">등록된 게시글이 없습니다.</td></tr>';
                 return;
             }
-
             listEl.innerHTML = sorted.map((p, idx) => {
                 const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
                 const isOwner = u ? u.userId === "Mint_pocky" : p.nickname === "Mint_pocky";
                 const isStaff = u ? cafeConfig.staffList.includes(u.userId) : false;
                 const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
-                
                 const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
                 const timeStr = p.time.split(',')[0].replace(/\s/g, '').slice(2);
-
                 return `
                     <tr>
                         <td class="td-num">${sorted.length - idx}</td>
@@ -459,11 +456,7 @@
                             ${p.image ? '<span style="font-size:12px; margin-left:5px;">🖼️</span>' : ''}
                             ${cCount > 0 ? `<span class="comment-count-badge">[${cCount}]</span>` : ''}
                         </td>
-                        <td class="td-author">
-                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${p.userId || p.nickname}')">
-                                ${badge}${p.nickname}
-                            </span>
-                        </td>
+                        <td class="td-author"><span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${p.userId || p.nickname}')">${badge}${p.nickname}</span></td>
                         <td class="td-date">${timeStr}</td>
                     </tr>`;
             }).join('');
@@ -489,14 +482,11 @@
         function renderPostDetail(id) {
             const p = allPosts.find(x => x.id === id); 
             if (!p) return;
-            
             const u = allUsers.find(x => x.userId === p.userId || x.nickname === p.nickname);
             const isOwner = u ? u.userId === "Mint_pocky" : p.nickname === "Mint_pocky";
             const isStaff = u ? cafeConfig.staffList.includes(u.userId) : false;
             const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
             
-            // 삭제 권한: 본인 이거나 점원, 주인장일 경우 모두 가능
-            // 수정 권한: 작성자 본인만 가능
             const isMine = currentUser && (currentUser.userId == p.userId || currentUser.nickname == p.nickname);
             const isAdmin = currentUser && (currentUser.userId === 'Mint_pocky' || cafeConfig.staffList.includes(currentUser.userId) || currentUser.role === '주인장' || currentUser.role === '점원');
             const canDelete = isMine || isAdmin;
@@ -534,7 +524,6 @@
             document.getElementById('postContentView').style.display = 'none';
             document.getElementById('postEditView').style.display = 'block';
             document.getElementById('editArea').value = p.content;
-            
             currentEditImg = p.image || null;
             updateEditImgPreview();
         }
@@ -543,30 +532,19 @@
             const file = input.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = e => { 
-                    currentEditImg = e.target.result; 
-                    updateEditImgPreview(); 
-                };
+                reader.onload = e => { currentEditImg = e.target.result; updateEditImgPreview(); };
                 reader.readAsDataURL(file);
             }
             input.value = '';
         }
 
-        function clearEditImg() {
-            currentEditImg = null;
-            updateEditImgPreview();
-        }
+        function clearEditImg() { currentEditImg = null; updateEditImgPreview(); }
 
         function updateEditImgPreview() {
             const container = document.getElementById('editImgPreviewContainer');
             const imgEl = document.getElementById('editImgPreview');
-            if (currentEditImg) {
-                imgEl.src = currentEditImg;
-                container.style.display = 'block';
-            } else {
-                imgEl.src = '';
-                container.style.display = 'none';
-            }
+            if (currentEditImg) { imgEl.src = currentEditImg; container.style.display = 'block'; } 
+            else { imgEl.src = ''; container.style.display = 'none'; }
         }
 
         function cancelEdit() {
@@ -602,14 +580,10 @@
             let html = comments.map(c => {
                 totalCount += 1 + (c.replies?.length || 0);
                 const cUser = allUsers.find(x => x.userId === c.userId || x.nickname === c.nickname);
-                
                 const isOwnerC = cUser ? cUser.userId === "Mint_pocky" : c.nickname === "Mint_pocky";
                 const isStaffC = cUser ? cafeConfig.staffList.includes(cUser.userId) : false;
                 const badgeC = isOwnerC ? '👑 ' : (isStaffC ? '⭐ ' : '');
-
                 const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
-                
-                // 댓글 삭제 권한 로직 동일 적용 (본인, 점원, 주인장 모두 삭제 가능)
                 const isMineC = currentUser && (currentUser.userId == c.userId || currentUser.nickname == c.nickname);
                 const isAdminC = currentUser && (currentUser.userId === 'Mint_pocky' || cafeConfig.staffList.includes(currentUser.userId) || currentUser.role === '주인장' || currentUser.role === '점원');
                 const canDeleteC = isMineC || isAdminC;
@@ -641,13 +615,10 @@
 
                 (c.replies || []).forEach(r => {
                     const rUser = allUsers.find(x => x.userId === r.userId || x.nickname === r.nickname);
-                    
                     const isOwnerR = rUser ? rUser.userId === "Mint_pocky" : r.nickname === "Mint_pocky";
                     const isStaffR = rUser ? cafeConfig.staffList.includes(rUser.userId) : false;
                     const badgeR = isOwnerR ? '👑 ' : (isStaffR ? '⭐ ' : '');
-
                     const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
-                    
                     const isMineR = currentUser && (currentUser.userId == r.userId || currentUser.nickname == r.nickname);
                     const isAdminR = currentUser && (currentUser.userId === 'Mint_pocky' || cafeConfig.staffList.includes(currentUser.userId) || currentUser.role === '주인장' || currentUser.role === '점원');
                     const canDeleteR = isMineR || isAdminR;
@@ -686,20 +657,13 @@
 
             const newContent = prompt("수정할 내용을 입력해주세요:", target.content);
             if (newContent !== null && newContent.trim() !== "") {
-                socket.emit('edit_comment', { 
-                    postId, commentId, replyId, 
-                    userId: currentUser.userId, 
-                    newContent: newContent.trim() 
-                });
+                socket.emit('edit_comment', { postId, commentId, replyId, userId: currentUser.userId, newContent: newContent.trim() });
             }
         }
 
         function deleteComment(postId, commentId, replyId = null) {
             if (!confirm("이 댓글을 삭제하시겠습니까?")) return;
-            socket.emit('delete_comment', { 
-                postId, commentId, replyId, 
-                userId: currentUser.userId 
-            });
+            socket.emit('delete_comment', { postId, commentId, replyId, userId: currentUser.userId });
         }
 
         function addComment(parentId) {
@@ -707,11 +671,7 @@
             const input = parentId ? document.getElementById(`rInput-${parentId}`) : document.getElementById('cInput');
             const content = input.value.trim();
             if (!content) return;
-            socket.emit('new_comment', { 
-                postId: currentPostId, 
-                commentId: parentId, 
-                data: { userId: currentUser.userId, nickname: currentUser.nickname, content } 
-            });
+            socket.emit('new_comment', { postId: currentPostId, commentId: parentId, data: { userId: currentUser.userId, nickname: currentUser.nickname, content } });
             input.value = ""; 
             if (parentId) toggleReplyInput(parentId);
         }
@@ -791,6 +751,7 @@
             
             const isStaff = (currentUser.role === '주인장' || currentUser.role === '점원' || currentUser.userId === 'Mint_pocky');
             document.getElementById('tab1').style.display = isStaff ? 'block' : 'none';
+            document.getElementById('tab2').style.display = isStaff ? 'block' : 'none';
             showSTab(0); 
             document.getElementById('settingsModal').style.display = 'flex';
         }
@@ -798,45 +759,53 @@
         function showSTab(idx) {
             document.getElementById('st-0').style.display = (idx === 0) ? 'block' : 'none';
             document.getElementById('st-1').style.display = (idx === 1) ? 'block' : 'none';
+            document.getElementById('st-2').style.display = (idx === 2) ? 'block' : 'none';
             document.getElementById('tab0').classList.toggle('active', idx === 0);
             document.getElementById('tab1').classList.toggle('active', idx === 1);
-            if (idx === 1) renderUserAdmin();
+            document.getElementById('tab2').classList.toggle('active', idx === 2);
+            if (idx === 1 || idx === 2) renderUserAdmin();
         }
 
         function renderUserAdmin() {
-            const area = document.getElementById('userListArea');
-            let html = '<h3 style="font-size:15px; margin:20px 15px 15px 15px; color:var(--naver-green);">활동 중인 멤버</h3>';
+            const area1 = document.getElementById('activeUserList');
+            const area2 = document.getElementById('bannedUserList');
             
             const activeUsers = allUsers.filter(u => !u.isBanned);
             const bannedUsers = allUsers.filter(u => u.isBanned);
 
-            html += activeUsers.map(u => {
-                const isStaff = cafeConfig.staffList.includes(u.userId);
-                const isOwner = u.userId === "Mint_pocky";
-                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '👤 ');
-                return `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f5f5f5;">
-                    <div>
-                        <div style="font-weight:bold; font-size:14px;">${badge}${u.nickname}</div>
-                        <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
-                    </div>
-                    <div>
-                        ${(currentUser.role === '주인장' || currentUser.userId === 'Mint_pocky') && !isOwner ? `
-                        <button class="btn" style="padding:5px 10px; font-size:11px;" onclick="manageUser('${u.userId}','${isStaff?'demote':'promote'}')">
-                            ${isStaff?'점원해제':'점원임명'}
-                        </button>` : ''}
-                        ${!isOwner && u.userId !== currentUser.userId ? `
-                        <button class="btn" style="padding:5px 10px; font-size:11px; background:#fff; border:1px solid #ff4d4d; color:#ff4d4d; margin-left:5px;" onclick="manageUser('${u.userId}','ban')">추방</button>` : ''}
-                    </div>
-                </div>`;
-            }).join('');
-
-            // 추방된 멤버 리스트도 같은 레이아웃으로 표시
-            if (bannedUsers.length > 0) {
-                html += '<h3 style="font-size:15px; margin:30px 15px 15px 15px; color:#ff4d4d;">추방된 멤버</h3>';
-                html += bannedUsers.map(u => {
+            // 1. 활성 멤버 리스트
+            if(activeUsers.length === 0) {
+                area1.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">활동 중인 멤버가 없습니다.</div>';
+            } else {
+                area1.innerHTML = activeUsers.map(u => {
+                    const isStaff = cafeConfig.staffList.includes(u.userId);
+                    const isOwner = u.userId === "Mint_pocky";
+                    const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '👤 ');
                     return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f5f5f5;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #eee;">
+                        <div>
+                            <div style="font-weight:bold; font-size:14px;">${badge}${u.nickname}</div>
+                            <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
+                        </div>
+                        <div>
+                            ${(currentUser.role === '주인장' || currentUser.userId === 'Mint_pocky') && !isOwner ? `
+                            <button class="btn" style="padding:5px 10px; font-size:11px;" onclick="manageUser('${u.userId}','${isStaff?'demote':'promote'}')">
+                                ${isStaff?'점원해제':'점원임명'}
+                            </button>` : ''}
+                            ${!isOwner && u.userId !== currentUser.userId ? `
+                            <button class="btn" style="padding:5px 10px; font-size:11px; background:#fff; border:1px solid #ff4d4d; color:#ff4d4d; margin-left:5px;" onclick="manageUser('${u.userId}','ban')">추방</button>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            // 2. 추방된 멤버 리스트
+            if(bannedUsers.length === 0) {
+                area2.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">추방된 멤버가 없습니다.</div>';
+            } else {
+                area2.innerHTML = bannedUsers.map(u => {
+                    return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #eee;">
                         <div>
                             <div style="font-weight:bold; font-size:14px; color:#888;">🚫 ${u.nickname}</div>
                             <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
@@ -847,8 +816,6 @@
                     </div>`;
                 }).join('');
             }
-
-            area.innerHTML = html;
         }
 
         async function manageUser(tId, act) {
