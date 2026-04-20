@@ -1,10 +1,10 @@
 {
-  "name": "카페 에스프레소",
-  "short_name": "Cafe",
+  "name": "Cafe Espresso",
+  "short_name": "Espresso",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f9f9f9",
-  "theme_color": "#03c75a",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "icon.png",
