@@ -285,27 +285,44 @@
             if (likeStat) likeStat.innerText = totalLikes;
         }
 
-        function showProfile(idOrNick) {
-            let user = allUsers.find(u => u.userId === idOrNick) || allUsers.find(u => u.nickname === idOrNick);
-            if (!user) return alert("유저 정보를 찾을 수 없습니다.");
-            
-            openProfileId = user.userId;
-            
-            // 실시간 권한에 따른 뱃지
-            const isOwner = user.userId === "Mint_pocky";
-            const isStaff = cafeConfig.staffList.includes(user.userId);
-            const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
-            
-            document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
-            document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
-            document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
-            document.getElementById('p-nick').innerText = badge + user.nickname;
-            document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
-            
-            document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
-            
-            updateProfileStats(user.userId);
-            document.getElementById('profileModal').style.display = 'flex';
+        // [수정 완료] 서버 API를 사용하여 유저 정보를 가져오도록 수정
+        async function showProfile(idOrNick) {
+            try {
+                // 서버 API를 호출하여 최신 유저 정보를 가져옵니다.
+                const res = await fetch(`/api/user/${idOrNick}`);
+                const data = await res.json();
+                
+                let user = null;
+                if (data.success) {
+                    user = data.user;
+                } else {
+                    // 서버 조회 실패 시 로컬 리스트에서 한 번 더 찾아봅니다 (닉네임 클릭 대비)
+                    user = allUsers.find(u => u.userId === idOrNick) || allUsers.find(u => u.nickname === idOrNick);
+                }
+
+                if (!user) return alert("유저 정보를 찾을 수 없습니다.");
+                
+                openProfileId = user.userId;
+                
+                // 실시간 권한에 따른 뱃지 설정
+                const isOwner = user.userId === "Mint_pocky";
+                const isStaff = cafeConfig.staffList.includes(user.userId);
+                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
+                
+                document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
+                document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
+                document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
+                document.getElementById('p-nick').innerText = badge + user.nickname;
+                document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
+                
+                document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
+                
+                updateProfileStats(user.userId);
+                document.getElementById('profileModal').style.display = 'flex';
+            } catch (err) {
+                console.error("프로필 로드 오류:", err);
+                alert("정보를 가져오는 중 오류가 발생했습니다.");
+            }
         }
 
         function viewUserPosts(userId, nickname) {

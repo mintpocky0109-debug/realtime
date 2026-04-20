@@ -52,6 +52,18 @@ app.get('/write', (req, res) => {
     res.sendFile(path.join(__dirname, 'write.html')); 
 });
 
+// [추가] 특정 유저 정보 가져오기 API
+app.get('/api/user/:userId', (req, res) => {
+    const user = users.find(u => u.userId === req.params.userId);
+    if (user) {
+        // 보안을 위해 비밀번호(password)는 제외하고 전송합니다.
+        const { password, ...userProfile } = user;
+        res.json({ success: true, user: userProfile });
+    } else {
+        res.json({ success: false, message: "유저 정보를 찾을 수 없습니다." });
+    }
+});
+
 app.post('/api/signup', (req, res) => {
     const { userId, password, nickname } = req.body;
     if (!userId || !password || !nickname) return res.json({ success: false, message: "모든 항목을 입력해주세요." });
