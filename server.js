@@ -81,7 +81,8 @@ app.post('/api/signup', (req, res) => {
         role: userId.trim() === "Mint_pocky" ? "주인장" : "멤버", 
         profileImg: DEFAULT_PF, 
         profileDesc: "반갑습니다!", 
-        bgImg: "" 
+        bgImg: "",
+        isBanned: false // 강퇴 여부
     };
     users.push(newUser);
     saveAll();
@@ -92,6 +93,9 @@ app.post('/api/login', (req, res) => {
     const { userId, password } = req.body;
     const user = users.find(u => u.userId === userId && u.password === password);
     if (user) {
+        if (user.isBanned) {
+            return res.json({ success: false, message: "카페에서 강퇴된 유저입니다." });
+        }
         user.role = (user.userId === "Mint_pocky") ? "주인장" : (cafeConfig.staffList.includes(user.userId) ? "점원" : "멤버");
         res.json({ success: true, user });
     } else {
@@ -126,13 +130,24 @@ app.post('/api/admin/manage-user', (req, res) => {
     const targetIdx = users.findIndex(u => u.userId === targetId);
     if (targetIdx === -1) return res.json({ success: false });
 
-    if (action === 'promote' && admin.role === '주인장') { 
-        if (!cafeConfig.staffList.includes(targetId)) cafeConfig.staffList.push(targetId);
-    } else if (action === 'demote' && admin.role === '주인장') { 
-        cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId); 
-    } else if (action === 'kick') { 
-        if (users[targetIdx].userId !== "Mint_pocky") users.splice(targetIdx, 1);
+    // 주인장 권한 액션
+    if (admin.role === '주인장') {
+        if (action === 'promote' && !cafeConfig.staffList.includes(targetId)) {
+            cafeConfig.staffList.push(targetId);
+        } else if (action === 'demote') {
+            cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId); 
+        }
     }
+    
+    // 점원 및 주인장 공통 권한 (강퇴 및 강퇴 해제)
+    if (action === 'ban' && users[targetIdx].userId !== "Mint_pocky" && adminId !== targetId) {
+        users[targetIdx].isBanned = true;
+        // 강퇴 시 점원이었다면 점원 목록에서도 해제
+        cafeConfig.staffList = cafeConfig.staffList.filter(id => id !== targetId);
+    } else if (action === 'unban') {
+        users[targetIdx].isBanned = false;
+    }
+
     saveAll();
     io.emit('update_users', users);
     res.json({ success: true });
@@ -154,10 +169,12 @@ io.on('connection', (socket) => {
         io.emit('update_posts', posts);
     });
 
-    socket.on('edit_post', ({ postId, userId, newContent }) => {
+    socket.on('edit_post', ({ postId, userId, newContent, newImage }) => {
         const post = posts.find(p => p.id === postId);
         if (post && post.userId === userId) {
             post.content = newContent;
+            // 사진을 삭제하거나 새로 교체했을 때 업데이트
+            if (newImage !== undefined) post.image = newImage;
             saveAll();
             io.emit('update_posts', posts);
         }

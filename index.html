@@ -127,12 +127,21 @@
                 <div id="postDetailHeader"></div>
                 
                 <div id="postContentView">
+                    <div id="postImgArea" style="margin-bottom:15px;"></div>
                     <div id="postDetailBody" style="min-height:250px; line-height:1.8; font-size:16px; color:#333; white-space:pre-wrap;"></div>
-                    <div id="postImgArea" style="margin-top:30px;"></div>
                 </div>
 
                 <div id="postEditView" style="display:none; margin-top:10px;">
-                    <textarea id="editArea" class="input-style" style="height:350px; resize:none; line-height:1.6;"></textarea>
+                    <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center;">
+                        <button class="btn" style="background:#f0f0f0; color:#333;" onclick="document.getElementById('editImgFile').click()">📷 사진 변경/추가</button>
+                        <button class="btn" style="background:#fff; border:1px solid #ff4d4d; color:#ff4d4d; padding:8px 12px; font-size:12px;" onclick="clearEditImg()">사진 삭제</button>
+                        <input type="file" id="editImgFile" accept="image/*" style="display:none;" onchange="loadEditImg(this)">
+                    </div>
+                    <div id="editImgPreviewContainer" style="margin-bottom:15px; display:none;">
+                        <img id="editImgPreview" style="max-width:100%; max-height:300px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                    </div>
+                    <textarea id="editArea" class="input-style" style="height:350px; resize:none; line-height:1.8; font-family:inherit; font-size:16px;"></textarea>
+                    
                     <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
                         <button class="btn" onclick="cancelEdit()">취소</button>
                         <button class="btn btn-green" onclick="submitEdit()">수정 완료</button>
@@ -241,6 +250,7 @@
         let currentBoard = '전체보기';
         let currentPostId = null;
         let openProfileId = null;
+        let currentEditImg = null;
 
         socket.on('load_all', (data) => { 
             allPosts = data.posts; 
@@ -248,7 +258,12 @@
             allUsers = data.users; 
             if (currentUser) {
                 const me = allUsers.find(u => u.userId === currentUser.userId);
-                if (me) { currentUser = me; localStorage.setItem('cafeUser', JSON.stringify(me)); }
+                if (me && !me.isBanned) { 
+                    currentUser = me; 
+                    localStorage.setItem('cafeUser', JSON.stringify(me)); 
+                } else if (me && me.isBanned) {
+                    logout(); // 강퇴당했으면 로그아웃 처리
+                }
             }
             renderAll(); 
             if (currentPostId) renderPostDetail(currentPostId);
@@ -264,6 +279,14 @@
         
         socket.on('update_users', (users) => { 
             allUsers = users; 
+            if (currentUser) {
+                const me = allUsers.find(u => u.userId === currentUser.userId);
+                if (me && me.isBanned) {
+                    alert("카페에서 강퇴되었습니다.");
+                    logout();
+                    return;
+                }
+            }
             updateAuthUI(); 
             if (document.getElementById('settingsModal').style.display === 'flex') renderUserAdmin();
         });
@@ -281,17 +304,10 @@
         }
 
         function showProfile(idOrNick) {
-            if (!idOrNick || idOrNick === 'undefined') {
-                return alert("유저 정보를 확인할 수 없습니다. (데이터 누락)");
-            }
+            if (!idOrNick || idOrNick === 'undefined') return alert("유저 정보를 확인할 수 없습니다.");
 
-            let user = allUsers.find(u => u.userId == idOrNick) || 
-                       allUsers.find(u => u.nickname == idOrNick);
-            
-            if (!user) {
-                console.error("조회 실패:", idOrNick, "목록:", allUsers);
-                return alert("해당 유저 정보를 찾을 수 없습니다.");
-            }
+            let user = allUsers.find(u => u.userId == idOrNick) || allUsers.find(u => u.nickname == idOrNick);
+            if (!user) return alert("해당 유저 정보를 찾을 수 없습니다.");
             
             openProfileId = user.userId;
             
@@ -302,7 +318,7 @@
             document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
             document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
             document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
-            document.getElementById('p-nick').innerText = badge + user.nickname;
+            document.getElementById('p-nick').innerText = badge + user.nickname + (user.isBanned ? " (강퇴됨)" : "");
             document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
             
             document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
@@ -333,10 +349,10 @@
 
         function updateAuthUI() {
             const h = document.getElementById('headerAuth');
-            if (currentUser) {
+            if (currentUser && !currentUser.isBanned) {
                 const isOwner = currentUser.userId === "Mint_pocky";
                 const isStaff = cafeConfig.staffList.includes(currentUser.userId);
-                const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
+                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
                 
                 h.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -371,7 +387,7 @@
             listEl.innerHTML = sorted.map((p, idx) => {
                 const isOwner = p.userId === "Mint_pocky"; 
                 const isStaff = cafeConfig.staffList.includes(p.userId);
-                const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
+                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
                 
                 const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
                 const timeStr = p.time.split(',')[0].replace(/\s/g, '').slice(2);
@@ -418,9 +434,8 @@
             
             const isOwner = p.userId === "Mint_pocky";
             const isStaff = cafeConfig.staffList.includes(p.userId);
-            const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
+            const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
             
-            // 본인 여부 확인 (userId가 없었던 예전 데이터까지 포괄하기 위해 nickname도 비교)
             const isMine = currentUser && (currentUser.userId == p.userId || currentUser.nickname == p.nickname);
             const canManage = currentUser && (isMine || currentUser.role === '주인장' || currentUser.role === '점원');
 
@@ -456,6 +471,40 @@
             document.getElementById('postContentView').style.display = 'none';
             document.getElementById('postEditView').style.display = 'block';
             document.getElementById('editArea').value = p.content;
+            
+            // 사진 수정 초기화
+            currentEditImg = p.image || null;
+            updateEditImgPreview();
+        }
+
+        function loadEditImg(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => { 
+                    currentEditImg = e.target.result; 
+                    updateEditImgPreview(); 
+                };
+                reader.readAsDataURL(file);
+            }
+            input.value = '';
+        }
+
+        function clearEditImg() {
+            currentEditImg = null;
+            updateEditImgPreview();
+        }
+
+        function updateEditImgPreview() {
+            const container = document.getElementById('editImgPreviewContainer');
+            const imgEl = document.getElementById('editImgPreview');
+            if (currentEditImg) {
+                imgEl.src = currentEditImg;
+                container.style.display = 'block';
+            } else {
+                imgEl.src = '';
+                container.style.display = 'none';
+            }
         }
 
         function cancelEdit() {
@@ -466,7 +515,7 @@
         function submitEdit() {
             const newContent = document.getElementById('editArea').value.trim();
             if (!newContent) return alert("내용을 입력해주세요.");
-            socket.emit('edit_post', { postId: currentPostId, userId: currentUser.userId, newContent });
+            socket.emit('edit_post', { postId: currentPostId, userId: currentUser.userId, newContent, newImage: currentEditImg });
             cancelEdit();
         }
 
@@ -491,9 +540,12 @@
             let html = comments.map(c => {
                 totalCount += 1 + (c.replies?.length || 0);
                 const cUser = allUsers.find(x => x.userId === c.userId);
-                const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
                 
-                // 댓글 권한 확인
+                const isOwnerC = c.userId === "Mint_pocky";
+                const isStaffC = cafeConfig.staffList.includes(c.userId);
+                const badgeC = isOwnerC ? '👑 ' : (isStaffC ? '⭐ ' : '');
+
+                const isCLiked = currentUser && c.likedBy?.includes(currentUser.userId);
                 const isMineC = currentUser && (currentUser.userId == c.userId || currentUser.nickname == c.nickname);
                 const canManageC = currentUser && (isMineC || currentUser.role === '주인장' || currentUser.role === '점원');
                 
@@ -502,7 +554,7 @@
                     <div style="display:flex; gap:15px;">
                         <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:40px; height:40px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${c.userId || c.nickname}')">
                         <div style="flex:1;">
-                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" onclick="showProfile('${c.userId || c.nickname}')">${c.nickname}</div>
+                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" onclick="showProfile('${c.userId || c.nickname}')">${badgeC}${c.nickname}</div>
                             <div style="font-size:15px; margin:8px 0; color:#333; line-height:1.5; white-space:pre-wrap;">${c.content}</div>
                             <div style="font-size:12px; color:#999; display:flex; gap:15px; align-items:center;">
                                 <span>${c.time}</span>
@@ -523,9 +575,12 @@
 
                 (c.replies || []).forEach(r => {
                     const rUser = allUsers.find(x => x.userId === r.userId);
-                    const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
                     
-                    // 답글 권한 확인
+                    const isOwnerR = r.userId === "Mint_pocky";
+                    const isStaffR = cafeConfig.staffList.includes(r.userId);
+                    const badgeR = isOwnerR ? '👑 ' : (isStaffR ? '⭐ ' : '');
+
+                    const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
                     const isMineR = currentUser && (currentUser.userId == r.userId || currentUser.nickname == r.nickname);
                     const canManageR = currentUser && (isMineR || currentUser.role === '주인장' || currentUser.role === '점원');
 
@@ -533,7 +588,7 @@
                     <div style="padding:20px 20px 20px 55px; border-bottom:1px solid #f5f5f5; background:#f9f9f9; display:flex; gap:12px;">
                         <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:32px; height:32px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${r.userId || r.nickname}')">
                         <div style="flex:1;">
-                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${r.userId || r.nickname}')">${r.nickname}</div>
+                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${r.userId || r.nickname}')">${badgeR}${r.nickname}</div>
                             <div style="font-size:14px; margin:6px 0; color:#444; line-height:1.5; white-space:pre-wrap;">${r.content}</div>
                             <div style="font-size:12px; color:#999; display:flex; align-items:center;">
                                 <span>${r.time}</span>
@@ -552,7 +607,6 @@
             document.getElementById('mainCommentInput').style.display = currentUser ? 'block' : 'none';
         }
 
-        // 댓글/답글 수정 기능 추가
         function editComment(postId, commentId, replyId = null) {
             const p = allPosts.find(x => x.id === postId);
             if (!p) return;
@@ -571,7 +625,6 @@
             }
         }
 
-        // 댓글/답글 삭제 기능 추가
         function deleteComment(postId, commentId, replyId = null) {
             if (!confirm("이 댓글을 삭제하시겠습니까?")) return;
             socket.emit('delete_comment', { 
@@ -683,13 +736,19 @@
 
         function renderUserAdmin() {
             const area = document.getElementById('userListArea');
-            area.innerHTML = allUsers.map(u => {
+            let html = '<h3 style="font-size:15px; margin-bottom:15px; color:var(--naver-green);">활동 중인 멤버</h3>';
+            
+            const activeUsers = allUsers.filter(u => !u.isBanned);
+            const bannedUsers = allUsers.filter(u => u.isBanned);
+
+            html += activeUsers.map(u => {
                 const isStaff = cafeConfig.staffList.includes(u.userId);
                 const isOwner = u.userId === "Mint_pocky";
+                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '👤 ');
                 return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f5f5f5;">
                     <div>
-                        <div style="font-weight:bold; font-size:14px;">${isOwner ? '👑' : (isStaff ? '⭐' : '👤')} ${u.nickname}</div>
+                        <div style="font-weight:bold; font-size:14px;">${badge}${u.nickname}</div>
                         <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
                     </div>
                     <div>
@@ -698,10 +757,28 @@
                             ${isStaff?'점원해제':'점원임명'}
                         </button>` : ''}
                         ${!isOwner && u.userId !== currentUser.userId ? `
-                        <button class="btn" style="padding:5px 10px; font-size:11px; background:#fff; border:1px solid #ff4d4d; color:#ff4d4d; margin-left:5px;" onclick="manageUser('${u.userId}','kick')">강퇴</button>` : ''}
+                        <button class="btn" style="padding:5px 10px; font-size:11px; background:#fff; border:1px solid #ff4d4d; color:#ff4d4d; margin-left:5px;" onclick="manageUser('${u.userId}','ban')">강퇴</button>` : ''}
                     </div>
                 </div>`;
             }).join('');
+
+            if (bannedUsers.length > 0) {
+                html += '<h3 style="font-size:15px; margin:25px 0 15px; color:#ff4d4d;">강퇴된 멤버</h3>';
+                html += bannedUsers.map(u => {
+                    return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #f5f5f5; background:#fff5f5;">
+                        <div>
+                            <div style="font-weight:bold; font-size:14px; color:#999;">🚫 ${u.nickname}</div>
+                            <div style="font-size:12px; color:#aaa;">ID: ${u.userId}</div>
+                        </div>
+                        <div>
+                            <button class="btn" style="padding:5px 10px; font-size:11px; background:#fff; border:1px solid var(--naver-green); color:var(--naver-green);" onclick="manageUser('${u.userId}','unban')">강퇴 해제</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            area.innerHTML = html;
         }
 
         async function manageUser(tId, act) {
