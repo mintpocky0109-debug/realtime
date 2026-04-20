@@ -85,8 +85,6 @@
 
         .comment-count-badge { color: #ff4d4d; font-weight: bold; font-size: 12px; margin-left: 5px; }
         .clickable-nick:hover { text-decoration: underline; cursor: pointer; }
-        
-        /* 모바일 최적화 및 기타 상세 스타일 생략 없이 모두 포함 */
     </style>
 </head>
 <body>
@@ -270,12 +268,9 @@
             if (document.getElementById('settingsModal').style.display === 'flex') renderUserAdmin();
         });
 
-        // [수정사항 1] 실시간 집계 로직 (프로필 모달용)
         function updateProfileStats(userId) {
             if (!userId) return;
-            // 1. 해당 유저가 쓴 글 필터링
             const userPosts = allPosts.filter(p => p.userId === userId);
-            // 2. 해당 유저의 글들이 받은 좋아요 총합 계산
             const totalLikes = userPosts.reduce((acc, p) => acc + (p.likedBy ? p.likedBy.length : 0), 0);
             
             const postStat = document.getElementById('stat-posts');
@@ -285,44 +280,35 @@
             if (likeStat) likeStat.innerText = totalLikes;
         }
 
-        // [수정 완료] 서버 API를 사용하여 유저 정보를 가져오도록 수정
-        async function showProfile(idOrNick) {
-            try {
-                // 서버 API를 호출하여 최신 유저 정보를 가져옵니다.
-                const res = await fetch(`/api/user/${idOrNick}`);
-                const data = await res.json();
-                
-                let user = null;
-                if (data.success) {
-                    user = data.user;
-                } else {
-                    // 서버 조회 실패 시 로컬 리스트에서 한 번 더 찾아봅니다 (닉네임 클릭 대비)
-                    user = allUsers.find(u => u.userId === idOrNick) || allUsers.find(u => u.nickname === idOrNick);
-                }
-
-                if (!user) return alert("유저 정보를 찾을 수 없습니다.");
-                
-                openProfileId = user.userId;
-                
-                // 실시간 권한에 따른 뱃지 설정
-                const isOwner = user.userId === "Mint_pocky";
-                const isStaff = cafeConfig.staffList.includes(user.userId);
-                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
-                
-                document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
-                document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
-                document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
-                document.getElementById('p-nick').innerText = badge + user.nickname;
-                document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
-                
-                document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
-                
-                updateProfileStats(user.userId);
-                document.getElementById('profileModal').style.display = 'flex';
-            } catch (err) {
-                console.error("프로필 로드 오류:", err);
-                alert("정보를 가져오는 중 오류가 발생했습니다.");
+        function showProfile(idOrNick) {
+            if (!idOrNick || idOrNick === 'undefined') {
+                return alert("유저 정보를 확인할 수 없습니다. (데이터 누락)");
             }
+
+            let user = allUsers.find(u => u.userId == idOrNick) || 
+                       allUsers.find(u => u.nickname == idOrNick);
+            
+            if (!user) {
+                console.error("조회 실패:", idOrNick, "목록:", allUsers);
+                return alert("해당 유저 정보를 찾을 수 없습니다.");
+            }
+            
+            openProfileId = user.userId;
+            
+            const isOwner = user.userId === "Mint_pocky";
+            const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(user.userId);
+            const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
+            
+            document.getElementById('p-bg').style.backgroundImage = user.bgImg ? `url(${user.bgImg})` : 'none';
+            document.getElementById('p-bg').style.backgroundColor = user.bgImg ? 'transparent' : '#eee';
+            document.getElementById('p-img').src = user.profileImg || DEFAULT_PF;
+            document.getElementById('p-nick').innerText = badge + user.nickname;
+            document.getElementById('p-desc').innerText = user.profileDesc || "소개글이 없습니다.";
+            
+            document.getElementById('statPostBtn').onclick = () => viewUserPosts(user.userId, user.nickname);
+            
+            updateProfileStats(user.userId);
+            document.getElementById('profileModal').style.display = 'flex';
         }
 
         function viewUserPosts(userId, nickname) {
@@ -349,12 +335,12 @@
             const h = document.getElementById('headerAuth');
             if (currentUser) {
                 const isOwner = currentUser.userId === "Mint_pocky";
-                const isStaff = cafeConfig.staffList.includes(currentUser.userId);
-                const badge = isOwner ? '👑 ' : (isStaff ? '⭐ ' : '');
+                const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(currentUser.userId);
+                const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
                 
                 h.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span onclick="showProfile('${currentUser.userId}')" style="cursor:pointer; font-weight:700; color:#333;">
+                        <span data-user="${currentUser.userId}" onclick="showProfile(this.getAttribute('data-user'))" style="cursor:pointer; font-weight:700; color:#333;">
                             ${badge}${currentUser.nickname}
                         </span>
                         <button class="btn" onclick="logout()" style="padding:6px 12px; font-size:12px; background:#fff; border:1px solid #ddd; color:#888;">로그아웃</button>
@@ -373,7 +359,6 @@
             }
         }
 
-        // [수정사항 2] 게시글 목록에서 주인장 왕관 표시 로직
         function displayPosts(arr) {
             const listEl = document.getElementById('postList');
             const sorted = [...arr].sort((a, b) => b.id - a.id);
@@ -384,12 +369,8 @@
             }
 
             listEl.innerHTML = sorted.map((p, idx) => {
-                // 작성자의 최신 정보 찾기
-                const u = allUsers.find(x => x.userId === p.userId);
-                
-                // 주인장 여부 판단 (아이디 기준)
                 const isOwner = p.userId === "Mint_pocky"; 
-                const isStaff = cafeConfig.staffList.includes(p.userId);
+                const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(p.userId);
                 const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
                 
                 const cCount = (p.comments || []).reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
@@ -404,7 +385,7 @@
                             ${cCount > 0 ? `<span class="comment-count-badge">[${cCount}]</span>` : ''}
                         </td>
                         <td class="td-author">
-                            <span class="clickable-nick" onclick="event.stopPropagation(); showProfile('${p.userId}')">
+                            <span class="clickable-nick" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
                                 ${badge}${p.nickname}
                             </span>
                         </td>
@@ -436,16 +417,16 @@
             const u = allUsers.find(x => x.userId === p.userId);
             
             const isOwner = p.userId === "Mint_pocky";
-            const isStaff = cafeConfig.staffList.includes(p.userId);
+            const isStaff = cafeConfig.staffList && cafeConfig.staffList.includes(p.userId);
             const badge = isOwner ? '👑' : (isStaff ? '⭐' : '');
             
             const canManage = currentUser && (currentUser.userId === p.userId || currentUser.role === '주인장' || currentUser.role === '점원');
 
             document.getElementById('postDetailHeader').innerHTML = `
                 <div class="post-header-bar">
-                    <img src="${u?.profileImg || DEFAULT_PF}" onclick="showProfile('${p.userId}')" style="cursor:pointer;">
+                    <img src="${u?.profileImg || DEFAULT_PF}" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))" style="cursor:pointer;">
                     <div class="post-info-text">
-                        <span class="post-info-nick" onclick="showProfile('${p.userId}')">${badge}${p.nickname}</span>
+                        <span class="post-info-nick" data-user="${p.userId || p.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${badge}${p.nickname}</span>
                         <span class="post-info-meta">${p.board} | ${p.time}</span>
                     </div>
                     ${canManage ? `
@@ -513,9 +494,9 @@
                 let commentHtml = `
                 <div style="padding:20px 0; border-bottom:1px solid #f0f0f0;">
                     <div style="display:flex; gap:15px;">
-                        <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:40px; height:40px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${c.userId}')">
+                        <img src="${cUser?.profileImg || DEFAULT_PF}" style="width:40px; height:40px; border-radius:50%; cursor:pointer; object-fit:cover;" data-user="${c.userId || c.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
                         <div style="flex:1;">
-                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" onclick="showProfile('${c.userId}')">${c.nickname}</div>
+                            <div style="font-size:14px; font-weight:bold; cursor:pointer;" data-user="${c.userId || c.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${c.nickname}</div>
                             <div style="font-size:15px; margin:8px 0; color:#333; line-height:1.5; white-space:pre-wrap;">${c.content}</div>
                             <div style="font-size:12px; color:#999; display:flex; gap:15px; align-items:center;">
                                 <span>${c.time}</span>
@@ -537,9 +518,9 @@
                     const isRLiked = currentUser && r.likedBy?.includes(currentUser.userId);
                     commentHtml += `
                     <div style="padding:20px 20px 20px 55px; border-bottom:1px solid #f5f5f5; background:#f9f9f9; display:flex; gap:12px;">
-                        <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:32px; height:32px; border-radius:50%; cursor:pointer; object-fit:cover;" onclick="showProfile('${r.userId}')">
+                        <img src="${rUser?.profileImg || DEFAULT_PF}" style="width:32px; height:32px; border-radius:50%; cursor:pointer; object-fit:cover;" data-user="${r.userId || r.nickname}" onclick="showProfile(this.getAttribute('data-user'))">
                         <div style="flex:1;">
-                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" onclick="showProfile('${r.userId}')">${r.nickname}</div>
+                            <div style="font-size:13px; font-weight:bold; cursor:pointer;" data-user="${r.userId || r.nickname}" onclick="showProfile(this.getAttribute('data-user'))">${r.nickname}</div>
                             <div style="font-size:14px; margin:6px 0; color:#444; line-height:1.5; white-space:pre-wrap;">${r.content}</div>
                             <div style="font-size:12px; color:#999;">
                                 <span>${r.time}</span>
